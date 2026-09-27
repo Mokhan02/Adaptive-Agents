@@ -154,3 +154,8 @@ agent also returns a non-None `internal_state()`.
   Test B. Test A is kept as pre-registered, because redesigning a test after
   learning it is uninformative would be a larger integrity problem than
   reporting a weak gate as weak.
+- **2026-09-27, correction:** the "60%" in the Test A caveat above came from
+  a preliminary in-sample estimate. With the pre-registered move offsets, an
+  untrained network detects 39% of pretraining-style switches (chance 5%).
+  The caveat stands: any function of the move window responds to the switch
+  to some degree. Details are in AGENT_SPECS.md.

@@ -75,6 +75,36 @@ def load_model(path) -> MoveTransformer:
     return model.eval()
 
 
+def weights_digest(model: MoveTransformer) -> str:
+    import hashlib
+
+    h = hashlib.sha256()
+    for name, t in sorted(model.state_dict().items()):
+        h.update(name.encode())
+        h.update(t.detach().cpu().contiguous().numpy().tobytes())
+    return h.hexdigest()
+
+
+def save_frozen(model: MoveTransformer, move_offsets: np.ndarray, meta: dict, path) -> str:
+    """Save weights and their move offsets as one unit, tied by a weights hash."""
+    digest = weights_digest(model)
+    torch.save(
+        {"config": asdict(model.cfg), "state_dict": model.state_dict(), "move_offsets": move_offsets,
+         "weights_sha256": digest, "meta": meta},
+        path,
+    )
+    return digest
+
+
+def load_frozen(path) -> tuple[MoveTransformer, np.ndarray, dict]:
+    ckpt = torch.load(path, map_location="cpu", weights_only=False)
+    model = MoveTransformer(ModelConfig(**ckpt["config"]))
+    model.load_state_dict(ckpt["state_dict"])
+    if weights_digest(model) != ckpt["weights_sha256"]:
+        raise ValueError(f"{path}: weights do not match the hash their move offsets were fit to")
+    return model.eval(), ckpt["move_offsets"], ckpt["meta"]
+
+
 MOVE_OFFSET_SEED_BASE = 4_000_000  # pretraining-distribution episodes for estimating move offsets
 
 

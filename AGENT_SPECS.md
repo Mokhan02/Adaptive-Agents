@@ -197,3 +197,32 @@ network and 94% in the step-1,000 checkpoint. Detection of a switch
 **Not conditional on results.** This definition holds whatever the finished
 checkpoint's diagnostic numbers turn out to be. Those numbers are reported,
 not used to choose between definitions.
+
+### 2026-09-27: correction to the detection figures above, and frozen-checkpoint diagnostic
+
+**Correction.** The "latest move removed" figures in the previous amendment
+(60% untrained, 47% at step 1,000) came from a preliminary check that
+estimated the per-move means *in-sample*, from the diagnostic's own control
+runs (60 pairs). With the pre-registered procedure (means from separate
+pretraining-distribution episodes, seeds 4,000,000+, 100 pairs), the
+untrained network's corrected detection is 39%. The decision was fixed
+unconditionally and does not change; only the cited reasons were overstated.
+
+**Frozen checkpoint.** Saved as `models/icl_frozen.pt`: step 17,000 of
+20,000, validation loss 0.0624 nats above the oracle floor, weights SHA-256
+`e0462ec6…c337ce`, with its move offsets bundled. The training log is
+`models/icl_frozen.log.jsonl`. It trained in 52 minutes on an Intel Core
+i3-1000NG4 (CPU, 3 threads).
+
+Diagnostic (`scripts/check_drift_signal.py`, pretraining-style opponents
+only, 100 pairs, chance 5%). Reported as-is, not used to revisit any
+definition:
+
+| Detection | h = 1 | h = 10 | h = 20 |
+|---|---|---|---|
+| Frozen: state, raw | 17% | 31% | 58% |
+| Frozen: state, corrected (primary) | 4% | 41% | 60% |
+| Frozen: output scores | 42% | 73% | 94% |
+| Untrained: state, raw | 3% | 6% | 38% |
+| Untrained: state, corrected | 1% | 36% | 39% |
+| Untrained: output scores | 6% | 10% | 15% |

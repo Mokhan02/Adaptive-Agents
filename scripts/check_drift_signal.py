@@ -23,7 +23,7 @@ import argparse
 import numpy as np
 import torch
 
-from regime.agents.in_context import InContextAgent, ModelConfig, MoveTransformer, estimate_move_offsets, load_model
+from regime.agents.in_context import InContextAgent, ModelConfig, MoveTransformer, estimate_move_offsets, load_frozen, load_model
 from regime.env import RegimeSwitchOpponent
 from regime.pretrain import _sample_strategy, tv
 from regime.runner import run_episode
@@ -55,13 +55,16 @@ def main() -> None:
     args = ap.parse_args()
     torch.set_num_threads(args.threads)
 
+    offsets = None
     if args.model == "random":
         torch.manual_seed(0)
         model = MoveTransformer(ModelConfig()).eval()
+    elif "move_offsets" in torch.load(args.model, map_location="cpu", weights_only=False):
+        model, offsets, _ = load_frozen(args.model)  # use the bundle's own offsets
     else:
         model = load_model(args.model)
-
-    offsets = estimate_move_offsets(model)
+    if offsets is None:
+        offsets = estimate_move_offsets(model)
     signals = {"switch": [], "control": []}
     for i in range(args.pairs):
         p, q = sample_pair(np.random.default_rng(DIAGNOSTIC_SEED_BASE + i))

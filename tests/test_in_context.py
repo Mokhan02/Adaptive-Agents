@@ -62,3 +62,20 @@ def test_move_offsets_remove_latest_move_component():
         return 1 - ((S - means[M]) ** 2).sum() / ((S - S.mean(0)) ** 2).sum()
 
     assert r2(fixed.states[20:], fixed.opp_actions[20:]) < 0.5 * r2(raw.states[20:], raw.opp_actions[20:])
+
+
+def test_frozen_bundle_ties_offsets_to_weights(tmp_path):
+    from regime.agents.in_context import estimate_move_offsets, load_frozen, save_frozen
+
+    model = small_model()
+    offsets = estimate_move_offsets(model, n_episodes=2, n_rounds=200)
+    save_frozen(model, offsets, {"step": 1}, tmp_path / "f.pt")
+    loaded, loaded_offsets, meta = load_frozen(tmp_path / "f.pt")
+    np.testing.assert_array_equal(loaded_offsets, offsets)
+    assert meta == {"step": 1}
+
+    bundle = torch.load(tmp_path / "f.pt", weights_only=False)
+    bundle["state_dict"]["unembed.bias"] += 1e-3  # weights changed without refitting offsets
+    torch.save(bundle, tmp_path / "g.pt")
+    with pytest.raises(ValueError):
+        load_frozen(tmp_path / "g.pt")
