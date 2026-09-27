@@ -143,3 +143,14 @@ agent also returns a non-None `internal_state()`.
   and hyperparameter tuning rules are pre-registered in
   [AGENT_SPECS.md](AGENT_SPECS.md). This is an addition; nothing above is
   changed.
+- **2026-09-27:** the in-context agent's state now has the latest-move
+  component removed (see the AGENT_SPECS.md amendment of the same date).
+  **Interpretive caveat for Test A, not a change to it:** for the in-context
+  agent, Test A is a weak gate. Any function of the move window shifts when
+  the opponent's move mix shifts: an untrained network detected
+  pretraining-style switches 60% of the time (chance 5%). Passing Test A
+  therefore shows the state responds to the switch, not that the model
+  learned a representation of it. For this agent, the evidence lies in
+  Test B. Test A is kept as pre-registered, because redesigning a test after
+  learning it is uninformative would be a larger integrity problem than
+  reporting a weak gate as weak.

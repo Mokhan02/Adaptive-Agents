@@ -85,6 +85,40 @@ class ScheduledOpponent:
     def act(self, t: int, rng: np.random.Generator) -> int:
         return int(rng.choice(N_ACTIONS, p=self.distribution(t)))
 
+    def distributions(self, n_rounds: int) -> np.ndarray:
+        return np.stack([self.distribution(t) for t in range(n_rounds)])
+
+
+PRETRAIN_SEED_BASE = 1_000_000  # training batches: PRETRAIN_SEED_BASE + step
+VALIDATION_SEED_BASE = 2_000_000  # validation set, also from the pretraining distribution
+
+
+def sample_moves(dists: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+    """One move per row of `dists`, by inverse CDF."""
+    u = rng.random((len(dists), 1))
+    return np.minimum((u > np.cumsum(dists, axis=1)).sum(axis=1), N_ACTIONS - 1)
+
+
+def pretraining_batch(
+    seed: int, n_episodes: int = 8, windows_per_episode: int = 8, context: int = 50, n_rounds: int = 600
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Random windows from freshly sampled pretraining episodes.
+
+    Returns inputs (B, context), next-move targets (B, context), and the
+    opponent's true distribution for each target (B, context, 3), which gives
+    the loss floor of an oracle predictor.
+    """
+    rng = np.random.default_rng(seed)
+    xs, ys, ps = [], [], []
+    for _ in range(n_episodes):
+        dists = sample_pretraining_opponent(rng, n_rounds).distributions(n_rounds)
+        moves = sample_moves(dists, rng)
+        for start in rng.integers(0, n_rounds - context, size=windows_per_episode):
+            xs.append(moves[start : start + context])
+            ys.append(moves[start + 1 : start + context + 1])
+            ps.append(dists[start + 1 : start + context + 1])
+    return np.stack(xs), np.stack(ys), np.stack(ps)
+
 
 def _sample_strategy(rng: np.random.Generator) -> np.ndarray:
     while True:

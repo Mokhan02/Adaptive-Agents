@@ -82,3 +82,13 @@ def test_excluded_mass_matches_closed_form():
     x = np.random.default_rng(0).dirichlet(np.ones(3), size=40_000)
     frac = np.mean([near_held_out(p) for p in x])
     assert frac == pytest.approx(18 * EXCLUSION_EPS**2, abs=0.01)
+
+
+def test_pretraining_batch_shapes_and_alignment():
+    from regime.pretrain import pretraining_batch
+
+    x, y, p = pretraining_batch(0, n_episodes=2, windows_per_episode=3, context=50)
+    assert x.shape == y.shape == (6, 50) and p.shape == (6, 50, 3)
+    np.testing.assert_array_equal(x[:, 1:], y[:, :-1])  # targets are inputs shifted by one
+    np.testing.assert_allclose(p.sum(-1), 1.0)
+    np.testing.assert_array_equal(pretraining_batch(0, 2, 3)[0], pretraining_batch(0, 2, 3)[0])

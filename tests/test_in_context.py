@@ -1,0 +1,64 @@
+import numpy as np
+import pytest
+
+torch = pytest.importorskip("torch")
+
+from regime.agents.in_context import InContextAgent, ModelConfig, MoveTransformer, load_model, save_model
+from regime.env import STRATEGY_A, STRATEGY_B, RegimeSwitchOpponent
+from regime.runner import run_episode
+
+
+def small_model():
+    torch.manual_seed(0)
+    return MoveTransformer(ModelConfig(context=10, d_model=16, n_heads=2, n_layers=2))
+
+
+def test_model_is_causal():
+    model = small_model().eval()
+    x = torch.randint(0, 3, (1, 10))
+    x2 = x.clone()
+    x2[0, 7:] = (x2[0, 7:] + 1) % 3
+    with torch.no_grad():
+        a, _ = model(x)
+        b, _ = model(x2)
+    torch.testing.assert_close(a[0, :7], b[0, :7])
+
+
+def test_agent_logs_primary_state_and_continuous_outputs(tmp_path):
+    save_model(small_model(), tmp_path / "m.pt")
+    agent = InContextAgent(load_model(tmp_path / "m.pt"))
+    log = run_episode(agent, RegimeSwitchOpponent(STRATEGY_A, STRATEGY_B, switch_at=30), 60, seed=0)
+    assert log.states.shape == (60, 16)
+    assert log.outputs.shape == (60, 3)
+    np.testing.assert_allclose(log.policies.sum(1), 1.0)
+    assert len(agent.history) == 10  # rolling window, not full history
+    assert not any(p.requires_grad for p in agent.model.parameters())
+
+
+def test_state_and_outputs_do_not_depend_on_temperature():
+    # The opponent ignores the agent, so only gameplay depends on temperature (AGENT_SPECS.md).
+    model = small_model()
+    opp = RegimeSwitchOpponent(STRATEGY_A, STRATEGY_B, switch_at=30)
+    a = run_episode(InContextAgent(model, temperature=0.05), opp, 60, seed=0)
+    b = run_episode(InContextAgent(model, temperature=1.0), opp, 60, seed=0)
+    np.testing.assert_allclose(a.states, b.states)
+    np.testing.assert_allclose(a.outputs, b.outputs)
+
+
+def test_move_offsets_remove_latest_move_component():
+    from regime.agents.in_context import estimate_move_offsets
+
+    model = small_model()
+    offsets = estimate_move_offsets(model, n_episodes=5, n_rounds=200)
+    assert offsets.shape == (3, 3, 16)
+    opp = RegimeSwitchOpponent.no_switch(STRATEGY_A, switch_at=30)
+    raw = run_episode(InContextAgent(model), opp, 100, seed=0)
+    fixed = run_episode(InContextAgent(model, move_offsets=offsets), opp, 100, seed=0)
+    np.testing.assert_allclose(fixed.states, raw.states - offsets[1, raw.opp_actions])
+    np.testing.assert_allclose(fixed.outputs, raw.outputs)  # behavior is untouched
+
+    def r2(S, M):
+        means = np.stack([S[M == k].mean(0) for k in range(3)])
+        return 1 - ((S - means[M]) ** 2).sum() / ((S - S.mean(0)) ** 2).sum()
+
+    assert r2(fixed.states[20:], fixed.opp_actions[20:]) < 0.5 * r2(raw.states[20:], raw.opp_actions[20:])

@@ -149,4 +149,51 @@ baselines.
 
 ## Amendments
 
-_None._
+### 2026-09-27: remove the latest-move component from the in-context agent's state
+
+Made before the in-context checkpoint was frozen, and before any model had
+been run against A or B.
+
+**Change.** The in-context agent's internal state, both the primary site
+(residual stream after layer 1, final position) and the exploratory residual
+sites, is now the raw residual stream minus the mean residual stream for the
+latest opponent move:
+
+`s_t = r_t − μ[m_t]`, where `m_t` is the opponent's latest move and
+`μ[k]` is the mean final-position residual stream over full windows ending
+in move k.
+
+- **μ is estimated only on pretraining-distribution opponents:** 200 episodes
+  from `sample_pretraining_opponent`, seeds 4,000,000+, rounds ≥ 50, once per
+  frozen checkpoint (`estimate_move_offsets`). A and B are never used. This
+  is the same rule as every other calibrated quantity.
+- The per-dimension standardization in ANALYSIS_PLAN.md is applied after
+  this correction.
+- The raw, uncorrected state is still logged and reported as exploratory.
+- Output scores (the behavior signal) are unchanged.
+
+**Reason.** The final position is where the newest move enters, so the raw
+state there is dominated by that move's embedding. It changes at random every
+round whatever the regime. On pretraining-style opponents (never A or B), the
+latest move explained 98% of the raw layer-1 state's variance in an untrained
+network and 94% in the step-1,000 checkpoint. Detection of a switch
+(`scripts/check_drift_signal.py`, h = 20, chance 5%) was:
+
+| h = 20 detection | Raw state | Latest move removed | Output scores |
+|---|---|---|---|
+| Untrained network | 37% | 60% | 15% |
+| Trained, step 1,000 | 25% | 47% | 79% |
+
+**Alternatives considered.**
+- **Averaging the state over all window positions:** rejected. It discards
+  position-specific, context-weighted information, which leaves something
+  close to the bag-of-moves summary the counting agent already computes.
+- **Using layer 1's attention output:** rejected. The final position still
+  attends to itself, so the latest move re-enters in a less interpretable
+  form.
+- The correction chosen removes the confound in exactly the form it was
+  measured.
+
+**Not conditional on results.** This definition holds whatever the finished
+checkpoint's diagnostic numbers turn out to be. Those numbers are reported,
+not used to choose between definitions.
