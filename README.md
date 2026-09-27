@@ -10,7 +10,7 @@ The testbed is iterated Rock-Paper-Scissors against an opponent that switches
 from Strategy A to Strategy B partway through, either abruptly or by linear
 interpolation over a transition window.
 
-The statistical analysis is pre-registered in [ANALYSIS_PLAN.md](ANALYSIS_PLAN.md).
+The statistical analysis is pre-registered in [ANALYSIS_PLAN.md](ANALYSIS_PLAN.md), and the agents and pretraining data in [AGENT_SPECS.md](AGENT_SPECS.md).
 
 ## Layout
 
@@ -19,6 +19,7 @@ src/regime/
   env.py        RPS payoffs, oracle, RegimeSwitchOpponent (hard / gradual switch, no-switch control)
   runner.py     run_episode -> EpisodeLog (actions, policies, expected + oracle reward, internal states)
   metrics.py    regret, recovery time, excess regret, representational drift
+  pretrain.py   pretraining opponents for the in-context agent (held-out strategies excluded)
   agents/
     base.py       Agent interface: policy(), observe(), output_scores(), internal_state()
     baselines.py  reference agents for sanity checks (uniform, frequency counting)

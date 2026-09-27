@@ -138,4 +138,8 @@ agent also returns a non-None `internal_state()`.
 
 ## Amendments
 
-_None._
+- **2026-09-27:** agent definitions, the in-context agent's pretraining
+  distribution and held-out strategies, the choice of internal-state layer,
+  and hyperparameter tuning rules are pre-registered in
+  [AGENT_SPECS.md](AGENT_SPECS.md). This is an addition; nothing above is
+  changed.
