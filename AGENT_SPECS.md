@@ -21,18 +21,31 @@ near what the test uses.
 as A. B is itself a rotation of A. The held-out set is therefore the three
 rotations: (0.6, 0.2, 0.2), (0.2, 0.6, 0.2) and (0.2, 0.2, 0.6).
 
+Rotations are the only relabelings that preserve the win relation. Swapping
+two labels reverses who beats whom, which makes a different game, so the
+held-out set has exactly three members.
+
 **Exclusion neighborhood.** No pretraining strategy is within total-variation
-distance ε = 0.10 of a held-out strategy. This applies to every regime and to
-every intermediate blend of a gradual switch, so a transition can't sweep
-through the excluded neighborhood.
+distance ε = 0.10 of a held-out strategy, where TV(p, q) = ½ Σᵢ |pᵢ − qᵢ|.
+This applies to every regime and to every intermediate blend of a gradual
+switch, so a transition can't sweep through the excluded neighborhood. The
+check on a blend is exact (`segment_tv`): TV along the blend is convex and
+piecewise linear, so its minimum is found at the endpoints or the kinks, not
+by sampling points along the path.
+
+The held-out strategies are interior points of the simplex (each coordinate
+≥ 0.2), not vertices. For ε < 0.2 the three neighborhoods lie entirely inside
+the simplex and do not overlap, since the centers are 0.4 apart. Each one is a
+hexagon of area 3ε² in the (p₁, p₂) plane, and the simplex has area ½, so the
+excluded share of the uniform Dirichlet(1, 1, 1) distribution is exactly
+**18ε²**. `test_excluded_mass_matches_closed_form` checks this.
 
 - Why 0.10: from a 50-move context window, the dominant-action frequency of
   A can only be estimated to within one standard error of √(0.6·0.4/50) ≈ 0.07.
   ε ≈ 1.5 standard errors, so an excluded strategy is one the agent could
   barely tell apart from A using its own context.
-- Cost: this removes 18% of the strategy space (the space of all three-way
-  mixed strategies). ε = 0.15 would remove 40%, too much to keep the
-  pretraining distribution broad.
+- Cost: 18ε² = 18% of the strategy space at ε = 0.10. ε = 0.15 would remove
+  40.5%, too much to keep the pretraining distribution broad.
 
 **Everything else is sampled per episode (600 rounds):**
 
@@ -54,6 +67,15 @@ analysis seeds (0–99) and calibration seeds (10000+).
 
 ## Agents
 
+There is one variant of each agent. No agent has a confirmatory and an
+exploratory version. The input windows differ between agents because they
+play different roles:
+
+- The in-context agent's context window is its only means of adapting. K = 50
+  is fixed, because the ε margin above is derived from it.
+- The fine-tuning agent adapts through its weights. Its input window only
+  supplies local context and is one of its tuned hyperparameters.
+
 ### 1. In-context agent (primary)
 
 - **Input:** the last K = 50 opponent moves, one-hot, with learned positional
@@ -67,7 +89,12 @@ analysis seeds (0–99) and calibration seeds (10000+).
   before the checkpoint is frozen.
 - **During play:** frozen weights, and no updates of any kind.
 - **Output scores:** expected payoff of each action under the predicted
-  next-move distribution. **Policy:** softmax(scores / 0.1).
+  next-move distribution. **Policy:** softmax(scores / τ), where τ is tuned
+  (default 0.1).
+- τ affects gameplay, and therefore regret and the adaptation ranking. It
+  cannot affect Tests A and B: the opponent does not react to the agent, and
+  the agent's input is only the opponent's moves. So its internal state and
+  output scores are identical at any τ.
 - **Internal state (primary):** the residual stream after layer 1, at the
   final position. The final layer's residual stream is one linear map away
   from the output scores, so a lead/lag near zero is expected there by
@@ -78,7 +105,8 @@ analysis seeds (0–99) and calibration seeds (10000+).
 
 ### 2. Online fine-tuning agent (exploratory)
 
-- **Input:** the last 10 opponent moves, one-hot and flattened.
+- **Input:** the last k opponent moves, one-hot and flattened, with
+  k ∈ {10, 25, 50} tuned.
 - **Model:** MLP with one hidden layer of 32 units, producing 3 logits (the
   output scores). Policy: softmax(logits).
 - **Update:** REINFORCE with a running-mean reward baseline, one Adam step
@@ -91,7 +119,9 @@ analysis seeds (0–99) and calibration seeds (10000+).
 
 - **Model:** recency-weighted action values Q (forgetting factor λ), with a
   surprise statistic (running mean of |r − Q[a]|). The softmax temperature
-  rises with surprise measured against its own recent baseline.
+  rises with surprise measured against its own recent baseline. This is the
+  agent's only exploration mechanism; the in-context agent's τ does not apply
+  to it.
 - **Output scores:** Q. **Internal state:** (Q, surprise, temperature).
 - **Caveat recorded in advance:** this agent's internal state contains its
   output scores, so a lead/lag near zero is expected by construction. It is
@@ -101,11 +131,18 @@ analysis seeds (0–99) and calibration seeds (10000+).
 ## Hyperparameter tuning (fairness)
 
 Every agent's free hyperparameters get the same budget: a random search of
-30 configurations. For the fine-tuning agent that means learning rate and
-baseline decay; for the RL agent, λ, the base temperature and the surprise
-gain; for the in-context agent, learning rate and training steps.
+30 configurations.
+
+| Agent | Tuned hyperparameters |
+|---|---|
+| In-context | learning rate, training steps, τ |
+| Fine-tuning | learning rate, baseline decay, input window k |
+| RL | λ, base temperature, surprise gain |
+
 Configurations are scored by mean oracle-normalized excess regret against
-opponents drawn from the **pretraining distribution**, never against A or B.
+opponents drawn from `sample_pretraining_opponent`. That sampler excludes the
+neighborhoods around **all three** held-out strategies, so no agent is tuned on
+A, B or the third rotation, directly or through near-duplicates.
 Tuning the baselines on the test strategies while holding them out of the
 in-context agent's pretraining would tilt the adaptation ranking toward the
 baselines.

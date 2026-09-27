@@ -33,9 +33,23 @@ def near_held_out(p: np.ndarray, eps: float = EXCLUSION_EPS) -> bool:
     return min(tv(p, h) for h in HELD_OUT) < eps
 
 
+def segment_tv(p: np.ndarray, q: np.ndarray, h: np.ndarray) -> float:
+    """Exact minimum TV distance from h to any blend (1 - w) p + w q, w in [0, 1].
+
+    TV along the segment is convex and piecewise linear in w, with kinks only
+    where a coordinate of the blend crosses h, so the minimum is at an endpoint
+    or one of those kinks.
+    """
+    d = q - p
+    with np.errstate(divide="ignore", invalid="ignore"):
+        kinks = np.where(d != 0, (h - p) / d, np.nan)
+    ws = np.concatenate([[0.0, 1.0], kinks[(kinks > 0) & (kinks < 1)]])
+    return min(tv(p + w * d, h) for w in ws)
+
+
 def segment_near_held_out(p: np.ndarray, q: np.ndarray, eps: float = EXCLUSION_EPS) -> bool:
     """Whether a gradual blend from p to q passes within eps of a held-out strategy."""
-    return any(near_held_out((1 - w) * p + w * q, eps) for w in np.linspace(0, 1, 41))
+    return min(segment_tv(p, q, h) for h in HELD_OUT) < eps
 
 
 @dataclass
