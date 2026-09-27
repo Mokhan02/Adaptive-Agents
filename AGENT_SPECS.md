@@ -226,3 +226,71 @@ definition:
 | Untrained: state, raw | 3% | 6% | 38% |
 | Untrained: state, corrected | 1% | 36% | 39% |
 | Untrained: output scores | 6% | 10% | 15% |
+
+### 2026-09-27: tuning protocol, fixed before any configuration runs
+
+**The frozen checkpoint above is provisional.** Learning rate and training
+steps are among the in-context agent's tuned hyperparameters (see
+Hyperparameter tuning), so the final model is the sweep's winner.
+`models/icl_frozen.pt` is the default configuration's candidate, and its
+diagnostic table describes that configuration only. No model has been run
+against A or B, so re-freezing does not compromise the hold-out. The final
+model is frozen with `scripts/freeze_icl.py` in the same way.
+
+**Order of operations.**
+1. Run the sweep (below).
+2. Freeze the winning configuration of each agent.
+3. Run the calibration seeds (10000+) on A → B, which set T_w, h, W and L
+   per ANALYSIS_PLAN.md.
+4. Report the drift diagnostic at each agent's assigned h.
+5. Run the analysis seeds (0–99).
+
+h depends on recovery time, which depends on tuned hyperparameters such as
+the in-context temperature, so it cannot be fixed before step 3.
+
+**Tuning episodes.** 200 episodes, seeds 5,000,000–5,000,199, disjoint from
+the analysis (0–99), calibration (10000+), pretraining (1,000,000+),
+validation (2,000,000+), diagnostic (3,000,000+) and move-offset (4,000,000+)
+seeds. Each episode has one switch at round 200 of 600, matching the test
+structure:
+- Strategies p → q are drawn by the pretraining rules: outside the held-out
+  neighborhoods, TV(p, q) ≥ 0.20, and exact path check for gradual switches.
+- Hard switch with probability 0.5; otherwise the transition is uniform in
+  [1, 200].
+
+Every configuration of every agent plays the same 200 episodes with the same
+seeds (common random numbers).
+
+**Score.** Mean oracle-normalized excess regret (`metrics.excess_regret`,
+horizon 100) over the 200 episodes. Lower is better. It is the same for all
+three agents.
+
+**Search.** 30 configurations per agent, drawn from the ranges below with
+`numpy.random.default_rng(6_000_000 + agent_index)`, where agent_index is
+0 = in-context, 1 = fine-tuning, 2 = RL. "log" means log-uniform.
+
+| Agent | Hyperparameter | Range |
+|---|---|---|
+| In-context | learning rate | log [1e-4, 1e-3] |
+| | training steps | {2500, 5000, 10000, 20000} |
+| | τ | log [0.02, 0.5] |
+| Fine-tuning | learning rate | log [1e-3, 1e-1] |
+| | baseline decay | [0.8, 0.99] |
+| | input window k | {10, 25, 50} |
+| RL | forgetting factor λ | [0.8, 0.99] |
+| | base temperature | log [0.02, 0.5] |
+| | surprise gain | [0, 5] |
+
+Ties are broken by lower configuration index. In-context configurations
+each require their own pretraining run (same seeds and data as the default
+run, differing only in learning rate and steps).
+
+**RL agent details fixed here** (they were unspecified): Q starts at 0; only
+the chosen action's value is updated, `Q[a] += (1 − λ)(r − Q[a])`. Surprise
+is `|r − Q[a]|` before the update, tracked by a fast EMA with rate (1 − λ)
+and a slow EMA with rate (1 − λ)/10. The temperature is
+`τ = τ₀ · (1 + g · max(0, fast/slow − 1))`.
+
+**Fine-tuning agent details fixed here:** the hidden layer uses tanh, and
+windows shorter than k (early rounds) are zero-padded. The loss is
+`−(r − b) log π(a | x)`, with `b ← d·b + (1 − d)·r` updated after the step.
