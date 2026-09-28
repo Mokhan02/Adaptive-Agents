@@ -52,9 +52,14 @@ holds for this agent, this game, this switch type and this probe site.
 Test A is a weak gate for this agent, because any function of the move
 window responds to a switch, so the evidence is in Test B.
 
-### Robustness: all checks agree on direction, with different strength
+### Robust to analysis choices, not replicated
 
-All checks below are exploratory, defined in the plan before they ran.
+All checks below are exploratory, defined in the plan before they ran. They
+reuse the confirmatory model, seeds and runs. They show the direction isn't
+fragile to how it is measured; they are not a replication on new data. Four
+of them reproduce the direction (logits, h = 28, h = 7, onset). The planted
+signal and the untrained network are null controls: they show the pipeline
+doesn't produce a negative lag on its own, and they are not confirmations.
 
 ![Lag across checks](figures/4_robustness.png)
 
