@@ -463,3 +463,28 @@ is not frozen. Its negative-control expectation of "about 0" was wrong.
 Any redesign would compare the state against a structural null (layer 2,
 or a dimension-matched projection of the state) rather than against zero,
 and it will be specified only after this check is in.
+
+### Structural-null check: result (2026-09-28)
+
+`results/exploratory/structural_null_layer2.json`. The rerun reproduced
+study 1's layer-1 lags exactly.
+
+| Signal vs output | Median lag [95% CI] | +/−/0 |
+|---|---|---|
+| Layer 1, corrected (reference) | −2.5 [−3, −2] | 8/92/0 |
+| Layer 2, corrected | −2.0 [−2, −1] | 11/89/0 |
+| Layer 2, raw | +2.0 [0, 5] | 57/25/18 |
+
+**Verdict under the rule above: comparable, so the artifact explanation is
+supported.** The median is in [−3.5, −1.5], 89% of nonzero seeds are
+negative, and the CIs overlap. The overlap is marginal: the CIs touch at −2,
+and layer 2's median is 0.5 rounds smaller. Raw layer 2 reproduces the sign
+flip.
+
+**The headline is reframed**, as pre-registered: "residual-stream
+displacement peaks after output displacement, a pattern also present at a
+layer with no possible information lag, so it does not support a claim
+about representational timing." The pre-registered outcome and the results
+file are unchanged. This note governs how they are reported. The robustness
+checks establish a property of the displacement curves, not of
+representational timing. The proposal's early-warning question remains open.

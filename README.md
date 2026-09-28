@@ -28,49 +28,70 @@ committed unedited.
 
 ## Results
 
-> **Under review (2026-09-28): the primary result's interpretation is in
-> question, pending a structural-null check.** A pipeline dry run for a
-> follow-up study found that the same displacement-timing method reports
-> a large "lag" between layer 2 and the output. Layer 2 determines the
-> output in the same round, so no real information lag is possible there.
-> That suggests the method may be measuring the shape of the displacement
-> curves rather than when information arrives. A check of layer 2 against
-> the output with study 1's exact pipeline is defined in
-> [ANALYSIS_PLAN.md](ANALYSIS_PLAN.md) ("Structural-null check"). Until it
-> is reported, read the lag below as a property of these displacement
-> curves, not as evidence about representational timing. The early bump in
-> the overlay figure is already known to be a shape effect (see the same
-> section).
+> **Reframed (2026-09-28).** The pre-registered outcome below,
+> "representation lags behavior", stays on record as it came out. A
+> structural-null check has since shown that the lag doesn't support a claim
+> about representational timing. Layer 2, which determines the output in the
+> same round and so can have no information lag, shows the same pattern
+> under the same pipeline. See [the structural-null check](#structural-null-check-the-lag-is-a-property-of-the-measurement).
 
-### Pre-registered result: the probed representation lags behavior by 2–3 rounds
+### Pre-registered result: the probed state's displacement peaks 2–3 rounds after the output's
 
-**The claim.** For the in-context agent after a hard switch, the corrected
-layer-1 state at the final position moves after the output distribution
-does, by a median of 2.5 rounds.
+**The pre-registered test.** For the in-context agent after a hard switch,
+we compared when the corrected layer-1 state at the final position moves
+against when the output distribution moves.
 
 | Test | Result |
 |---|---|
 | **Test A:** does the state respond to the switch? | **Passed.** U = 8527 of 10,000 (AUC 0.85), p < 10⁻⁴ |
 | **Test B:** lead/lag, per-seed cross-correlation of displacements | **92 of 100 seeds negative**, median lag **−2.5 rounds**, 95% CI [−3, −2], sign test p = 3×10⁻¹⁹ |
-| **Pre-registered outcome** | **Representation lags behavior** |
+| **Pre-registered outcome** | "Representation lags behavior", **reframed below** |
 
 ![State vs output displacement](figures/2_drift_overlay.png)
 
-**Scope.** The probe is one slice of the network: the layer-1 residual
-stream at the final position, with the latest move's mean contribution
-removed. The output depends on every position and on layer 2. So the result
-says *this probe* lags the outputs, not that the network's computation does.
-Against the proposal's early-warning motivation, it counts only at this
-probe site. Later layers and attention patterns were not tested. The claim
-holds for this agent, this game, this switch type and this probe site.
-Test A is a weak gate for this agent, because any function of the move
-window responds to a switch, so the evidence is in Test B.
+### Structural-null check: the lag is a property of the measurement
+
+A pipeline dry run for a follow-up study showed the displacement-timing
+method reporting a large "lag" between layer 2 and the output. Layer 2 feeds
+the logits through one normalization and a linear map in the same round, so
+no information lag is possible there. We then ran study 1's exact pipeline
+with the state swapped for layer 2, on study 1's seeds, with the
+interpretation rule fixed beforehand ([ANALYSIS_PLAN.md](ANALYSIS_PLAN.md),
+"Structural-null check"):
+
+| Signal vs output | Median lag [95% CI] | Seeds negative |
+|---|---|---|
+| Layer 1, corrected (study 1's headline, reproduced exactly) | −2.5 [−3, −2] | 92 / 100 |
+| **Layer 2, corrected (no information lag possible)** | **−2.0 [−2, −1]** | **89 / 100** |
+| Layer 2, raw | +2.0 [0, 5] | 25 of 82 nonzero |
+
+By the pre-registered rule, this counts as **comparable**: the median is in
+[−3.5, −1.5], at least 80% of seeds are negative, and the CIs overlap. The
+CIs only just overlap, touching at −2, and layer 2's lag is about half a
+round smaller. Layer 2 also reproduces the sign flip without the correction.
+
+**The reframed reading:** residual-stream displacement peaks after output
+displacement, a pattern also present at a layer with no possible information
+lag. It therefore does not support a claim about representational timing.
+The likely mechanism is that a 64-dimensional residual's displacement is
+dominated by directions the output never reads, which rise and settle on
+their own schedule. The small early bump in the overlay above is a
+curve-shape effect as well: in a dry run, layer 2 showed the same "state
+first" pattern early in the rise, where a real early signal is impossible.
+
+**What remains true:** the numbers below are correct descriptions of these
+displacement curves, and robust to how they're measured. What is withdrawn
+is the interpretation that they say *when* the representation changes. The
+proposal's early-warning question is open. Answering it needs a method that
+compares the state against a structural null like layer 2, not against zero.
 
 ### Robust to analysis choices, not replicated
 
 All checks below are exploratory, defined in the plan before they ran. They
 reuse the confirmatory model, seeds and runs. They show the direction isn't
-fragile to how it is measured; they are not a replication on new data. Four
+fragile to how it is measured; they are not a replication on new data. In
+light of the structural-null check, they establish a robust property of the
+displacement curves, not of representational timing. Four
 of them reproduce the direction (logits, h = 28, h = 7, onset). The planted
 signal and the untrained network are null controls: they show the pipeline
 doesn't produce a negative lag on its own, and they are not confirmations.
@@ -86,19 +107,16 @@ doesn't produce a negative lag on its own, and they are not confirmations.
 | Onset difference (threshold crossing) | −3.0 [−5, −1] | 62 / 98 | Dependence on cross-correlation. This is the weakest support: 63% agreement, from noisy threshold crossings. |
 | Untrained network | 0 on every seed | — | Artifacts of the pipeline or architecture. The untrained network's state and outputs move in lockstep. This is a weak control: it shows the pipeline doesn't create the effect, not how training does. |
 
-### The sign depends on the latest-move correction
+### The sign depends on the latest-move correction, at both layers
 
 ![Per-seed lags, corrected vs raw](figures/3_lag_histograms.png)
 
-Without the correction, the raw state *leads*: median +4.5 rounds, 95% CI
-[2, 7], with 64 of 89 nonzero seeds positive. At the final position, the raw
-state is dominated by the embedding of the latest move. That embedding
-explains 94–98% of the state's variance and changes at random every round.
-The correction was fixed in an amendment
-([AGENT_SPECS.md](AGENT_SPECS.md), 2026-09-27) before any model saw the
-test strategies, and the amendment says explicitly that the choice is not
-conditional on results. That is why the pre-registered corrected definition
-decides the headline. The dependence on it is still part of the result.
+Without the correction, the raw layer-1 state *leads*: median +4.5 rounds,
+95% CI [2, 7], with 64 of 89 nonzero seeds positive. At the final position,
+the raw state is dominated by the embedding of the latest move, which
+explains 94–98% of its variance and changes at random every round. Raw
+layer 2 flips the same way (+2.0). So the sign flip is also a property of
+the measurement, not of layer 1.
 
 ### The exploratory agents' lead/lag is not testable by construction
 

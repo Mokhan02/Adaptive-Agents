@@ -1,0 +1,41 @@
+{
+  "label": "exploratory",
+  "layer1_corrected_reference": {
+    "median_lag": -2.5,
+    "median_ci95": [
+      -3.0,
+      -2.0
+    ],
+    "n_positive": 8,
+    "n_negative": 92,
+    "n_zero": 0,
+    "sign_test_p": 3.208563668244003e-19,
+    "wilcoxon_p": 5.378049287356565e-10
+  },
+  "layer2_corrected": {
+    "median_lag": -2.0,
+    "median_ci95": [
+      -2.0,
+      -1.0
+    ],
+    "n_positive": 11,
+    "n_negative": 89,
+    "n_zero": 0,
+    "sign_test_p": 2.540853335492305e-16,
+    "wilcoxon_p": 4.027310508722812e-08
+  },
+  "layer2_raw": {
+    "median_lag": 2.0,
+    "median_ci95": [
+      0.0,
+      5.0
+    ],
+    "n_positive": 57,
+    "n_negative": 25,
+    "n_zero": 18,
+    "sign_test_p": 0.0005347214913281793,
+    "wilcoxon_p": 0.05919710314425372
+  },
+  "share_negative_among_nonzero": 0.89,
+  "verdict": "comparable: artifact explanation supported; reframe study 1's headline"
+}

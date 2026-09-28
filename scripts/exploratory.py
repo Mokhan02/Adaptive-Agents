@@ -310,12 +310,86 @@ def run_remaining() -> None:
     save("6_7_8", out)
 
 
+def _two_layer_run(kind: str, seed: int) -> dict:
+    """Study 1's episode (600 rounds, A -> B at 200) logging corrected layer-1 and layer-2 residuals."""
+    import torch
+
+    from regime.agents.in_context import InContextAgent
+    from regime.analysis import TEST_PAIR, make_agent
+    from regime.env import RegimeSwitchOpponent
+    from regime.runner import run_episode
+
+    torch.set_num_threads(1)
+    cal = _load_cal("in_context")
+    base = make_agent("in_context")
+
+    class TwoLayers(InContextAgent):
+        def internal_state(self):
+            r = self.residual_streams()
+            return np.concatenate([r[1], r[2]])
+
+    agent = TwoLayers(base.model, temperature=base.temperature, move_offsets=base.move_offsets)
+    first, second = TEST_PAIR
+    opp = (RegimeSwitchOpponent(first, second, switch_at=cal.switch_at) if kind == "switch"
+           else RegimeSwitchOpponent.no_switch(first, switch_at=cal.switch_at))
+    log = run_episode(agent, opp, cal.n_rounds, seed)
+    d = log.states.shape[1] // 2
+    return dict(l1=log.states[:, :d], l2=log.states[:, d:], out=log.outputs, opp=log.opp_actions,
+                offsets2=base.move_offsets[2])
+
+
+def run_structural_null() -> None:
+    """ANALYSIS_PLAN.md, "Structural-null check": layer 2 vs output with study 1's exact pipeline."""
+    from concurrent.futures import ProcessPoolExecutor
+    from functools import partial
+
+    from regime.analysis import ANALYSIS_SWITCH_SEEDS, CALIBRATION_CONTROL_SEEDS
+
+    cal = _load_cal("in_context")
+    a, W, L, h = cal.switch_at, cal.W, cal.L, cal.h
+    with ProcessPoolExecutor(4) as pool:
+        sw = list(pool.map(partial(_two_layer_run, "switch"), ANALYSIS_SWITCH_SEEDS, chunksize=5))
+        ct = list(pool.map(partial(_two_layer_run, "control"), CALIBRATION_CONTROL_SEEDS, chunksize=5))
+
+    out_d = [_disp(_centered(r["out"]), h) for r in sw]
+    l1 = [lag_estimate(_disp(_std_state({"states": r["l1"]}, cal), h), o, a, W, L) for r, o in zip(sw, out_d)]
+    confirmed = json.loads(Path("results/confirmatory/results.json").read_text())["agents"]["in_context"]["test_b"]["lags"]
+    assert l1 == confirmed, "rerun does not reproduce study 1's layer-1 lags"
+    print("reproduction check: layer-1 lags identical to study 1", flush=True)
+
+    base = np.concatenate([r["l2"][cal.t_w :] for r in ct])
+    mean2, std2 = base.mean(0), np.where(base.std(0) > 0, base.std(0), 1.0)
+    corrected = [lag_estimate(_disp((r["l2"] - mean2) / std2, h), o, a, W, L) for r, o in zip(sw, out_d)]
+    raw = [lag_estimate(_disp(r["l2"] + r["offsets2"][r["opp"]], h), o, a, W, L) for r, o in zip(sw, out_d)]
+
+    res = {"layer1_corrected_reference": _lag_summary(l1), "layer2_corrected": _lag_summary(corrected),
+           "layer2_raw": _lag_summary(raw)}
+    for k, v in res.items():
+        print(_fmt(k, v), flush=True)
+
+    c = res["layer2_corrected"]
+    lo, hi = c["median_ci95"]
+    n_nz = c["n_positive"] + c["n_negative"]
+    frac_neg = c["n_negative"] / n_nz if n_nz else 0.0
+    overlaps = lo <= -2 and hi >= -3
+    if -3.5 <= c["median_lag"] <= -1.5 and overlaps and frac_neg >= 0.8:
+        verdict = "comparable: artifact explanation supported; reframe study 1's headline"
+    elif (c["median_lag"] > -1.0 or frac_neg < 0.6) and not overlaps:
+        verdict = "meaningfully different: artifact explanation weakened; layers need their own account"
+    else:
+        verdict = "intermediate: partly explained by curve shape"
+    res["share_negative_among_nonzero"] = frac_neg
+    res["verdict"] = verdict
+    print("verdict:", verdict)
+    save("structural_null_layer2", res)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("which", choices=["saturation", "icl", "untrained", "remaining"])
+    ap.add_argument("which", choices=["saturation", "icl", "untrained", "remaining", "structural-null"])
     args = ap.parse_args()
     {"saturation": run_saturation, "icl": run_icl_followups, "untrained": run_untrained,
-     "remaining": run_remaining}[args.which]()
+     "remaining": run_remaining, "structural-null": run_structural_null}[args.which]()
 
 
 if __name__ == "__main__":
