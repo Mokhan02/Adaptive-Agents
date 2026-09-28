@@ -25,7 +25,8 @@ from regime.runner import EpisodeLog
 
 T, SWITCH, H, W, L = 400, 200, 10, 60, 30
 CAL = Calibration("planted", t_w=20, median_recovery=20, p90_recovery=30, n_censored=0, runnable=True,
-                  h=H, W=W, L=L, switch_at=SWITCH, n_rounds=T, state_mean=[0.0] * 8, state_std=[1.0] * 8)
+                  h=H, W=W, L=L, switch_at=SWITCH, n_rounds=T, state_mean=[0.0] * 8, state_std=[1.0] * 8,
+                  control_mean_regret=[])
 
 
 def ramp(t, onset, width=15):
@@ -101,3 +102,21 @@ def test_settle_round_uses_relative_drop():
     m = np.concatenate([np.linspace(0.4, 0.02, 50), np.full(200, 0.02) + 0.005 * np.sin(np.arange(200))])
     # Band is 10% of the 0.38 drop (0.038), so small wiggles around 0.02 don't delay settling.
     assert 40 <= settle_round(m) <= 50
+
+
+def test_calibration_standardization_uses_rounds_after_late_warm_up():
+    from regime.analysis import calibrate
+
+    rng = np.random.default_rng(4)
+    e = np.empty(0)
+
+    def log(switch):
+        regret = np.concatenate([np.linspace(0.4, 0.0, 300), np.zeros(300)])  # settles at ~round 300
+        states = rng.normal(loc=2.0, size=(600, 4))
+        expected = 0.4 - regret
+        return EpisodeLog(e, e, e, expected, np.full(600, 0.4), e, np.zeros((600, 3)), states, 200, 200)
+
+    cal = calibrate("late", [log(True) for _ in range(5)], [log(False) for _ in range(5)])
+    assert cal.t_w > 200
+    assert np.all(np.isfinite(cal.state_mean)) and np.all(np.isfinite(cal.state_std))
+    np.testing.assert_allclose(cal.state_mean, 2.0, atol=0.1)

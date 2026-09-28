@@ -74,6 +74,7 @@ class Calibration:
     n_rounds: int | None
     state_mean: list[float]
     state_std: list[float]
+    control_mean_regret: list[float]  # m(t) behind T_w, kept for the record
 
 
 def censored_quantile(times: list[int | None], q: float) -> float | None:
@@ -106,7 +107,11 @@ def calibrate(name: str, switch_logs: list[EpisodeLog], control_logs: list[Episo
     m = np.mean([moving_average(log.instant_regret, 20) for log in control_logs], axis=0)
     t_w = settle_round(m)
 
-    states = np.concatenate([log.states[t_w:DEFAULT_SWITCH_AT] for log in control_logs])
+    # Controls never switch, so every round from T_w on is a post-warm-up baseline.
+    # (Slicing to DEFAULT_SWITCH_AT was empty whenever T_w >= 200.)
+    states = np.concatenate([log.states[t_w:] for log in control_logs])
+    if len(states) == 0:
+        raise ValueError(f"T_w={t_w} leaves no post-warm-up control rounds")
     mean, std = states.mean(0), states.std(0)
     std = np.where(std > 0, std, 1.0)
 
@@ -119,7 +124,7 @@ def calibrate(name: str, switch_logs: list[EpisodeLog], control_logs: list[Episo
         switch_at = max(DEFAULT_SWITCH_AT, t_w + h + W)
         n_rounds = max(DEFAULT_ROUNDS, switch_at + W + 1)
     return Calibration(name, t_w, med, p90, times.count(None), runnable, h, W, L, switch_at, n_rounds,
-                       mean.tolist(), std.tolist())
+                       mean.tolist(), std.tolist(), m.round(6).tolist())
 
 
 # --- signals ----------------------------------------------------------------

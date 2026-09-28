@@ -5,5 +5,7 @@ __pycache__/
 .pytest_cache/
 results/*
 !results/tuning/
+!results/calibration/
+!results/confirmatory/
 .DS_Store
 runs/

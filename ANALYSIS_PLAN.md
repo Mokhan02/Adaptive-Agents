@@ -202,3 +202,42 @@ agent also returns a non-None `internal_state()`.
     commit hash. Any later fix goes in an amendment with its reason.
   - **Calibration never computes Tests A or B.** It only derives T_w, h, W,
     L, the standardization statistics and the episode length.
+- **2026-09-27, calibration bug fix, before any analysis run.**
+  - **The bug.** Standardization statistics were computed over control-run
+    rounds [T_w, 200). This range is empty when T_w ≥ 200, which happened
+    for the RL (T_w = 249) and fine-tuning (T_w = 330) agents, and it
+    produced NaN statistics.
+  - **The fix.** Controls never switch, so the post-warm-up baseline is
+    [T_w, end of episode). This matches the intent of "[T_w, switch_at)",
+    and the fix applies to all three agents. Calibration is deterministic,
+    so it was rerun with the fix: recovery times, T_w, h, W, L, switch_at
+    and n_rounds are unchanged by construction, and only the
+    standardization statistics change. Each calibration file also stores
+    the control mean-regret curve behind T_w.
+  - **Limitation noted at the same time (exploratory agents only).** For
+    the RL and fine-tuning agents, T_w exceeds the calibration switch round
+    (200). Their recovery times, and therefore h and W, were measured before
+    they had finished warming up, while their analysis runs switch after
+    warm-up (at rounds 531 and 941). The rule is applied as pre-registered.
+    Their results carry this caveat. The primary agent (T_w = 31) is
+    unaffected.
+- **2026-09-27, before the confirmatory run.**
+  - **RL T_w is a band-edge artifact.** The RL agent's control regret is
+    flat from about round 100 (0.181 → 0.179 through round 200), but it
+    settles high (0.167), so the 10% band is only ±0.023. A noisy excursion
+    to 0.190 near round 250 sets T_w = 249 and pushes its switch to round
+    531. The rule is applied as written, and this caveat is recorded.
+  - **Adaptation ranking setup.** Tests A and B use each agent's own
+    switch_at, which makes recovery times incomparable across agents. The
+    ranking therefore uses the test opponent as specified in AGENT_SPECS.md
+    (hard switch at round 200 of 600) on analysis seeds 0–99, the same for
+    all agents. Recovery time is reported as a censored median with the
+    censored count; excess regret as a mean ± SE.
+  - **Secondary regret lag.** The behavior signal is replaced by
+    |Δ m(t)|, the absolute first difference of the 20-round windowed
+    regret. Everything else follows Test B.
+  - **Also reported as exploratory for the in-context agent:** Test B on the
+    raw (uncorrected) state.
+  - **The confirmatory script refuses to run** unless the working tree is
+    clean, HEAD carries the tag `confirmatory-v1`, and no results file
+    exists. The results file records the commit hash.
