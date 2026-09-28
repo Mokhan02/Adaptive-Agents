@@ -85,6 +85,11 @@ class ScheduledOpponent:
     def act(self, t: int, rng: np.random.Generator) -> int:
         return int(rng.choice(N_ACTIONS, p=self.distribution(t)))
 
+    @property
+    def switch_end(self) -> int:
+        """End of the first switch (for EpisodeLog bookkeeping); 0 if there is none."""
+        return self.switch_at[0] + self.transitions[0] if self.switch_at else 0
+
     def distributions(self, n_rounds: int) -> np.ndarray:
         return np.stack([self.distribution(t) for t in range(n_rounds)])
 

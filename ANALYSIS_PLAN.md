@@ -501,3 +501,78 @@ the ordering. Under an open-interval reading, the result is
 on the boundary between "comparable" and "intermediate". Under either
 reading, the lag does not support a representational-timing claim. Future
 rules on integer-valued lags must state their endpoint convention.
+
+## Standing conventions (2026-09-28; apply to every rule written from now on)
+
+1. **State the endpoint convention for every comparison.** Say whether
+   intervals are closed or open, and whether inequalities are strict. Most
+   of this project's statistics are whole numbers (lags, delays) or bootstrap
+   percentiles of whole numbers, so ties at a boundary are common, not rare.
+   The structural-null verdict landed exactly on such a boundary and could
+   only be reported as "on the boundary". Pre-registering interpretation rules
+   doesn't remove every judgment call, but it makes the remaining ones
+   visible. Making them visible *in advance* is this convention's job.
+2. **Commit rule-implementing code before the run it governs,** separately
+   from the results, so the record shows the order.
+
+## Dimension diagnostics (2026-09-28, defined before running)
+
+**Question.** Is the layer-1 vs output lag an artifact of the dimension
+mismatch, with displacement of a 64-dimensional state dominated by
+directions the output never reads? Both diagnostics use study 1's pipeline
+(corrected, standardized layer-1 state; centered output scores; h = 14,
+W = 86, L = 43; seeds 0–99; lag = argmax of linear cross-correlation, the
+same ties). Only the state is replaced by a projection of it. Both are
+exploratory diagnostics on existing seeds.
+
+The centered logits have 2 degrees of freedom (3 actions, centered), so the
+readout subspace is 2-dimensional, and the sweep starts at k = 2.
+
+### D1: readout projection
+
+- **Fit:** ridge regression (λ = 1e-3 × trace / d) of the centered logits on
+  the standardized corrected layer-1 state. The data are the frozen agent's
+  final-position states on 100 pretraining-distribution episodes (seeds
+  4,100,000–4,100,099), rounds ≥ 64 (full context, after warm-up). The
+  readout subspace Q is an orthonormal basis of the coefficient matrix's
+  column space (rank 2).
+- **Validity condition (checked first, closed ≥):** the held-out R² of the
+  fitted regression predicting centered logits is ≥ 0.70 on both 50 held-out
+  pretraining episodes (4,200,000–4,200,049) and study 1's calibration
+  switch runs on A → B (10000–10099, rounds ≥ 64). If either is below 0.70,
+  D1 is reported as **invalid** (the subspace doesn't carry the output's
+  information on this data), with no lag interpretation.
+- **Statistic:** Test B's summary for the projected state (s · Q) vs the
+  output, on seeds 0–99.
+- **Interpretation** (study 1's layer 1: −2.5 [−3, −2]):
+  - **Shrinks (mismatch explanation supported):** median > −1.0 (strict)
+    *and* the CI's upper end is ≥ 0 (closed).
+  - **Reverses:** median > 0 (strict) *and* the CI's lower end is > 0
+    (strict), meaning the readout moves before the output. This would be
+    interesting, and it would be exploratory.
+  - **Persists:** median ≤ −2.0 (closed) *and* the CI's upper end is < 0
+    (strict).
+  - **Anything else:** partial.
+
+### D2: random-projection dimension sweep
+
+- **Projections:** for k ∈ {2, 4, 8, 16, 32, 64}, 20 random k-dimensional
+  orthonormal projections of the standardized corrected layer-1 state
+  (`numpy.random.default_rng(6_100_000)`, QR of Gaussian matrices, drawn in
+  that order). At k = 64 a projection is a rotation, which leaves
+  displacement norms unchanged, so all 20 must reproduce study 1's lags
+  exactly. This is asserted as a sanity check.
+- **Statistic per projection:** the median lag over seeds 0–99. Per k: the
+  mean and the range of |median lag| across the 20 projections.
+- **Interpretation:** a one-sided Spearman correlation between k and |median
+  lag| over the 120 (k, projection) pairs, testing whether larger k gives a
+  larger |lag|.
+  - **Shrinks toward 0 (mismatch supported):** Spearman p < 0.05 (strict)
+    *and* the mean |median lag| at k = 2 is ≤ 1.0 (closed), which is 40% of
+    layer 1's 2.5.
+  - **Partial dose-response:** p < 0.05, but the k = 2 mean is > 1.0.
+  - **Flat (not dimension per se):** p ≥ 0.05. This points to specific
+    directions, not dimensionality.
+- **Also reported:** D1's readout lag against the k = 2 random distribution,
+  to show whether the readout directions behave differently from random 2-D
+  projections.

@@ -393,12 +393,133 @@ def run_structural_null() -> None:
     save("structural_null_layer2_lags", lags)
 
 
+def _l1_run(kind: str, seed: int) -> dict:
+    """Frozen in-context agent; corrected layer-1 state and output scores. kind: 'switch' (A -> B,
+    study 1's structure) or 'pretrain' (a pretraining-distribution opponent from `seed`)."""
+    import torch
+
+    from regime.analysis import TEST_PAIR, make_agent
+    from regime.env import RegimeSwitchOpponent
+    from regime.pretrain import sample_pretraining_opponent
+    from regime.runner import run_episode
+
+    torch.set_num_threads(1)
+    cal = _load_cal("in_context")
+    if kind == "switch":
+        opp = RegimeSwitchOpponent(*TEST_PAIR, switch_at=cal.switch_at)
+    else:
+        opp = sample_pretraining_opponent(np.random.default_rng(seed), cal.n_rounds)
+    log = run_episode(make_agent("in_context"), opp, cal.n_rounds, seed)
+    return dict(states=log.states, out=log.outputs)
+
+
+def _runs(kind: str, seeds) -> list[dict]:
+    from concurrent.futures import ProcessPoolExecutor
+    from functools import partial
+
+    with ProcessPoolExecutor(4) as pool:
+        return list(pool.map(partial(_l1_run, kind), seeds, chunksize=5))
+
+
+def _logits(out: np.ndarray) -> np.ndarray:
+    return _centered(np.log(_pred_from_outputs(out)))
+
+
+def run_dimension() -> None:
+    """ANALYSIS_PLAN.md, "Dimension diagnostics": D1 readout projection, D2 random-projection sweep."""
+    from scipy.stats import spearmanr
+
+    from regime.analysis import ANALYSIS_SWITCH_SEEDS, CALIBRATION_SWITCH_SEEDS
+
+    cal = _load_cal("in_context")
+    a, W, L, h = cal.switch_at, cal.W, cal.L, cal.h
+    std = lambda r: _std_state(r, cal)
+
+    # --- D1: fit the readout on pretraining-distribution episodes
+    fit = _runs("pretrain", range(4_100_000, 4_100_100))
+    X = np.concatenate([std(r)[64:] for r in fit])
+    Y = np.concatenate([_logits(r["out"])[64:] for r in fit])
+    lam = 1e-3 * np.trace(X.T @ X) / X.shape[1]
+    B = np.linalg.solve(X.T @ X + lam * np.eye(X.shape[1]), X.T @ Y)  # (64, 3)
+    U, S, _ = np.linalg.svd(B, full_matrices=False)
+    Q = U[:, :2]  # rank 2: the centered logits have 2 degrees of freedom
+
+    def r2(runs):
+        Xh = np.concatenate([std(r)[64:] for r in runs])
+        Yh = np.concatenate([_logits(r["out"])[64:] for r in runs])
+        return float(1 - ((Yh - Xh @ B) ** 2).sum() / ((Yh - Yh.mean(0)) ** 2).sum())
+
+    r2_pre = r2(_runs("pretrain", range(4_200_000, 4_200_050)))
+    r2_ab = r2(_runs("switch", CALIBRATION_SWITCH_SEEDS))
+    valid = r2_pre >= 0.70 and r2_ab >= 0.70
+    print(f"D1 validity: held-out R^2 pretraining {r2_pre:.3f}, A->B calibration {r2_ab:.3f} -> {'valid' if valid else 'INVALID'}",
+          flush=True)
+
+    sw = _runs("switch", ANALYSIS_SWITCH_SEEDS)
+    out_d = [_disp(_centered(r["out"]), h) for r in sw]
+    full = [lag_estimate(_disp(std(r), h), o, a, W, L) for r, o in zip(sw, out_d)]
+    confirmed = json.loads(Path("results/confirmatory/results.json").read_text())["agents"]["in_context"]["test_b"]["lags"]
+    assert full == confirmed, "rerun does not reproduce study 1's layer-1 lags"
+    print("reproduction check: layer-1 lags identical to study 1", flush=True)
+
+    def lags_for(P):
+        return [lag_estimate(_disp(std(r) @ P, h), o, a, W, L) for r, o in zip(sw, out_d)]
+
+    d1 = _lag_summary(lags_for(Q))
+    lo, hi = d1["median_ci95"]
+    med = d1["median_lag"]
+    if not valid:
+        d1_verdict = "invalid: readout subspace does not carry the output's information on this data"
+    elif med > 0 and lo > 0:
+        d1_verdict = "reverses: readout moves before the output"
+    elif med > -1.0 and hi >= 0:
+        d1_verdict = "shrinks: mismatch explanation supported"
+    elif med <= -2.0 and hi < 0:
+        d1_verdict = "persists"
+    else:
+        d1_verdict = "partial"
+    print(_fmt("D1 readout (k=2)", d1) + f"  -> {d1_verdict}", flush=True)
+
+    # --- D2: random orthonormal projections
+    rng = np.random.default_rng(6_100_000)
+    ks, sweep = (2, 4, 8, 16, 32, 64), {}
+    pairs = []
+    for k in ks:
+        meds = []
+        for _ in range(20):
+            P, _r = np.linalg.qr(rng.normal(size=(64, k)))
+            lags = lags_for(P)
+            if k == 64:
+                assert lags == confirmed, "a rotation changed the lags"
+            meds.append(float(np.median(lags)))
+            pairs.append((k, abs(meds[-1])))
+        sweep[k] = dict(median_lags=meds, mean_abs=float(np.mean(np.abs(meds))),
+                        range=[float(min(meds)), float(max(meds))])
+        print(f"D2 k={k:>2}: mean |median lag| {sweep[k]['mean_abs']:.2f}  range {sweep[k]['range']}", flush=True)
+    rho, p_two = spearmanr([k for k, _ in pairs], [v for _, v in pairs])
+    p_one = p_two / 2 if rho > 0 else 1 - p_two / 2
+    if p_one < 0.05 and sweep[2]["mean_abs"] <= 1.0:
+        d2_verdict = "shrinks toward 0: mismatch supported"
+    elif p_one < 0.05:
+        d2_verdict = "partial dose-response"
+    else:
+        d2_verdict = "flat: not dimension per se"
+    readout_vs_random = float(np.mean(np.array(sweep[2]["median_lags"]) <= med))
+    print(f"D2 Spearman rho {rho:.3f}, one-sided p {p_one:.3g} -> {d2_verdict}; "
+          f"share of random k=2 medians <= readout's: {readout_vs_random:.2f}", flush=True)
+    save("dimension_diagnostics", dict(
+        d1=dict(r2_heldout_pretraining=r2_pre, r2_calibration_A_to_B=r2_ab, valid=valid, ridge_lambda=float(lam),
+                singular_values=S.tolist(), test_b=d1, verdict=d1_verdict),
+        d2=dict(by_k={str(k): v for k, v in sweep.items()}, spearman_rho=float(rho), spearman_p_one_sided=float(p_one),
+                verdict=d2_verdict, share_random_k2_at_or_below_readout=readout_vs_random)))
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("which", choices=["saturation", "icl", "untrained", "remaining", "structural-null"])
+    ap.add_argument("which", choices=["saturation", "icl", "untrained", "remaining", "structural-null", "dimension"])
     args = ap.parse_args()
     {"saturation": run_saturation, "icl": run_icl_followups, "untrained": run_untrained,
-     "remaining": run_remaining, "structural-null": run_structural_null}[args.which]()
+     "remaining": run_remaining, "structural-null": run_structural_null, "dimension": run_dimension}[args.which]()
 
 
 if __name__ == "__main__":
