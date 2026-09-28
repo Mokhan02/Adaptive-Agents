@@ -74,7 +74,8 @@ def main() -> None:
 
     results = [json.loads(line) for line in open(path)]
     best = min(results, key=lambda r: (r["score"], r["index"]))
-    print(f"best: [{best['index']}] {best['score']:.2f}  {best['config']}  -> {args.runs_dir / f'cfg{best['index']:02d}'}")
+    best_dir = args.runs_dir / f"cfg{best['index']:02d}"
+    print(f"best: [{best['index']}] {best['score']:.2f}  {best['config']}  -> {best_dir}")
 
 
 if __name__ == "__main__":
