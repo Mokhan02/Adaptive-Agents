@@ -28,6 +28,20 @@ committed unedited.
 
 ## Results
 
+> **Under review (2026-09-28): the primary result's interpretation is in
+> question, pending a structural-null check.** A pipeline dry run for a
+> follow-up study found that the same displacement-timing method reports
+> a large "lag" between layer 2 and the output. Layer 2 determines the
+> output in the same round, so no real information lag is possible there.
+> That suggests the method may be measuring the shape of the displacement
+> curves rather than when information arrives. A check of layer 2 against
+> the output with study 1's exact pipeline is defined in
+> [ANALYSIS_PLAN.md](ANALYSIS_PLAN.md) ("Structural-null check"). Until it
+> is reported, read the lag below as a property of these displacement
+> curves, not as evidence about representational timing. The early bump in
+> the overlay figure is already known to be a shape effect (see the same
+> section).
+
 ### Pre-registered result: the probed representation lags behavior by 2–3 rounds
 
 **The claim.** For the in-context agent after a hard switch, the corrected
