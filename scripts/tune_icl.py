@@ -33,6 +33,17 @@ from regime.tuning import N_TUNING_EPISODES, sample_configs, score_in_context_fa
 LOCK = threading.Lock()
 
 
+def run_config_safe(idx: int, config: dict, args) -> dict | None:
+    """One failed configuration is reported and skipped, not fatal to the sweep.
+    Rerunning the sweep retries it."""
+    try:
+        return run_config(idx, config, args)
+    except Exception as e:  # noqa: BLE001
+        with LOCK:
+            print(f"[{idx:>2}] FAILED: {e!r} (see {args.runs_dir / f'cfg{idx:02d}.out'})", flush=True)
+        return None
+
+
 def run_config(idx: int, config: dict, args) -> dict:
     run_dir = args.runs_dir / f"cfg{idx:02d}"
     cmd = [sys.executable, "scripts/pretrain_icl.py", "--run-dir", str(run_dir), "--steps", str(config["steps"]),
@@ -70,9 +81,14 @@ def main() -> None:
     todo.sort(key=lambda ic: -ic[1]["steps"])
     print(f"{len(todo)} configurations to run on {args.device}, {args.parallel} at a time", flush=True)
     with ThreadPoolExecutor(args.parallel) as pool:
-        list(pool.map(lambda ic: run_config(*ic, args), todo))
+        outcomes = list(pool.map(lambda ic: run_config_safe(*ic, args), todo))
 
+    failed = [i for (i, _), r in zip(todo, outcomes) if r is None]
+    if failed:
+        print(f"{len(failed)} configuration(s) failed: {failed}. Rerun to retry them.")
     results = [json.loads(line) for line in open(path)]
+    if len(results) < len(configs):
+        print(f"only {len(results)}/{len(configs)} configurations scored; the winner is provisional until all are")
     best = min(results, key=lambda r: (r["score"], r["index"]))
     best_dir = args.runs_dir / f"cfg{best['index']:02d}"
     print(f"best: [{best['index']}] {best['score']:.2f}  {best['config']}  -> {best_dir}")
