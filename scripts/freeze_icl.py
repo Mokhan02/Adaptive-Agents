@@ -32,6 +32,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--run-dir", type=Path, required=True)
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--hardware", help="where training ran, if not this machine")
     args = ap.parse_args()
 
     log = [json.loads(line) for line in open(args.run_dir / "log.jsonl")]
@@ -45,7 +46,7 @@ def main() -> None:
         val_excess=best["val_excess"],
         total_steps=log[-1]["step"],
         train_seconds=log[-1]["sec"],
-        hardware=f"{cpu_name()}, {train_threads} torch threads / {platform.platform()} / torch {torch.__version__}",
+        hardware=args.hardware or f"{cpu_name()}, {train_threads} torch threads / {platform.platform()} / torch {torch.__version__}",
         frozen_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
     )
     args.out.parent.mkdir(parents=True, exist_ok=True)

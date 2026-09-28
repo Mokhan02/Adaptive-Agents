@@ -1,0 +1,34 @@
+{
+  "in_context": {
+    "config_index": 22,
+    "config": {
+      "lr": 0.00046467911663187713,
+      "steps": 20000,
+      "temperature": 0.03490052458012668
+    },
+    "tuning_score": 11.882163948248904,
+    "tuning_se": 3.186497064016094,
+    "model": "models/icl_frozen.pt",
+    "weights_sha256": "fdb5ad02e7da72b5a9b86979b701fd776633d35c3579cd9db63891a065b2d4a4"
+  },
+  "fine_tune": {
+    "config_index": 5,
+    "config": {
+      "lr": 0.0010227610017718163,
+      "baseline_decay": 0.9700316630889726,
+      "window": 10
+    },
+    "tuning_score": 53.06659617303758,
+    "tuning_se": 4.720663525660991
+  },
+  "change_aware": {
+    "config_index": 3,
+    "config": {
+      "forgetting": 0.8106961909528635,
+      "base_temperature": 0.29924415292807194,
+      "surprise_gain": 3.895789135202841
+    },
+    "tuning_score": 14.973433851765117,
+    "tuning_se": 3.1616596430852657
+  }
+}

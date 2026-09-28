@@ -294,3 +294,67 @@ and a slow EMA with rate (1 − λ)/10. The temperature is
 **Fine-tuning agent details fixed here:** the hidden layer uses tanh, and
 windows shorter than k (early rounds) are zero-padded. The loss is
 `−(r − b) log π(a | x)`, with `b ← d·b + (1 − d)·r` updated after the step.
+
+### 2026-09-27: sweep results and frozen winners
+
+All three sweeps ran to the protocol above: 30 configurations each, on the
+same 200 tuning episodes. No agent has been run against A or B. Winners
+(lowest score, ties to lower index) are frozen in
+`results/tuning/winners.json`:
+
+| Agent | Winner | Tuning score | Next best |
+|---|---|---|---|
+| In-context | #22: lr 4.6e-4, 20,000 steps, τ 0.035 | 11.88 ± 3.19 | 11.93 (#9), 12.20 (#18) |
+| Change-aware RL | #3: λ 0.81, τ₀ 0.30, surprise gain 3.9 | 14.97 ± 3.16 | 15.23 (#6), 15.29 (#1) |
+| Fine-tuning | #5: lr 1.0e-3, baseline decay 0.97, k = 10 | 53.07 ± 4.72 | 65.81 (#18), 70.32 (#15) |
+
+Tuning scores are best-of-30 and optimistically biased; they are not the
+adaptation ranking. That comes from the analysis seeds (ANALYSIS_PLAN.md).
+Observations recorded now, before any test data exists:
+
+- **Near-ties:** the in-context and RL winners are each within 0.1 SE of
+  the runner-up. The rule was applied as written.
+- **RL surprise gain barely matters:** the top three span gains of 0.6-3.9,
+  and the forgetting factor (0.81-0.89) is what separates good
+  configurations. The surprise-scaled exploration contributes little in
+  this setting.
+- **Fine-tuning winner at the edge of its range:** lr 1.0e-3 is the lower
+  bound of the range, and the top two are both at the low end. The range may
+  understate this agent. The confirmatory ranking uses the frozen winner; a
+  lower-lr sensitivity check may be reported, labeled exploratory.
+- **In-context: longer training helps gameplay** even though validation
+  loss is flat past ~2,500 steps. All of the top four trained for 20,000
+  steps, with τ 0.03-0.05.
+
+**The frozen in-context model** is `models/icl_frozen.pt`, replacing the
+provisional default-configuration checkpoint: step 17,000 of 20,000,
+validation loss 0.0622 above the oracle floor, weights SHA-256
+`fdb5ad02…d4a4`, trained on an NVIDIA A10 (Lambda Cloud). Drift diagnostic
+(pretraining-style opponents only, 100 pairs, chance 5%):
+
+| Detection | h = 1 | h = 10 | h = 20 |
+|---|---|---|---|
+| State, corrected (primary) | 7% | 32% | 66% |
+| State, raw | 6% | 27% | 68% |
+| Output scores | 57% | 74% | 88% |
+
+The untrained baseline for comparison is 39% at h = 20 (corrected state).
+
+**Incidents during the in-context sweep, none affecting the results:**
+- The instance's software stack differed from the development machine:
+  Python 3.10, an older numpy lacking `Generator.spawn`, and torch 2.6,
+  whose `torch.load` rejects numpy scalars by default. Each crashed the
+  sweep, and each was fixed in code. numpy was upgraded to 1.26.4, the same
+  version used for the other two sweeps.
+- Eight 20,000-step runs had trained under the old numpy. Their saved
+  learning rates differed from the configurations in the last bits
+  (numpy's `exp` and `log` changed), so the resume guard refused them.
+  They were deleted and retrained under numpy 1.26.4.
+- For a period, two sweep processes ran at once. They never trained the
+  same configuration at the same time; the second process only rescored
+  finished runs, reproducing their scores exactly. The 15 duplicate result
+  lines were identical to the originals and were removed.
+
+**Reproducibility:** results are reproducible to within floating-point
+noise across machines, not bit-for-bit. numpy's `exp` and `log` can differ
+in the last bit across versions and CPUs.

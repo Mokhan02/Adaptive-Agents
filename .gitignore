@@ -3,6 +3,7 @@ __pycache__/
 *.egg-info/
 .venv/
 .pytest_cache/
-results/
+results/*
+!results/tuning/
 .DS_Store
 runs/
