@@ -40,6 +40,44 @@ def score_episode(make_agent: Callable[[], Agent], i: int) -> float:
     return excess_regret(log)
 
 
+def score_in_context_fast(model, temperature: float, i: int, device: str = "cpu") -> float:
+    """Same score as `score_episode(lambda: InContextAgent(model, temperature), i)`,
+    in one batched forward pass.
+
+    Valid because the opponent ignores the agent: the opponent's moves (drawn
+    from its own spawned RNG, as in `run_episode`) fix the agent's
+    predictions, and regret uses the policy's expected reward, not its
+    sampled actions.
+    """
+    import torch
+
+    from regime.env import PAYOFF, expected_payoffs, oracle_value
+    from regime.runner import EpisodeLog
+
+    opp = tuning_opponent(i)
+    _, opp_rng = np.random.default_rng(TUNING_SEED_BASE + i).spawn(2)
+    moves = np.array([opp.act(t, opp_rng) for t in range(N_ROUNDS)])
+    K = model.cfg.context
+
+    with torch.no_grad():
+        # Causal model: logits at position j of the first window predict round j + 1.
+        first, _ = model(torch.as_tensor(moves[None, :K], device=device))
+        windows = np.lib.stride_tricks.sliding_window_view(moves[: N_ROUNDS - 1], K)[1:]  # windows ending at rounds K..N-2
+        rest, _ = model(torch.as_tensor(windows.copy(), device=device))
+        logits = torch.cat([first[0], rest[:, -1]]).double().cpu()
+    preds = np.concatenate([np.full((1, 3), 1 / 3), torch.softmax(logits, -1).numpy()])[:N_ROUNDS]
+
+    z = preds @ PAYOFF.T / temperature
+    pi = np.exp(z - z.max(1, keepdims=True))
+    pi /= pi.sum(1, keepdims=True)
+    dists = np.stack([opp.distribution(t) for t in range(N_ROUNDS)])
+    expected = np.einsum("ta,ta->t", pi, dists @ PAYOFF.T)
+    oracle = np.array([oracle_value(d) for d in dists])
+    empty = np.empty(0)
+    log = EpisodeLog(empty, moves, empty, expected, oracle, pi, preds @ PAYOFF.T, None, opp.switch_at, opp.switch_end)
+    return excess_regret(log)
+
+
 def _log_uniform(rng: np.random.Generator, lo: float, hi: float) -> float:
     return float(np.exp(rng.uniform(np.log(lo), np.log(hi))))
 

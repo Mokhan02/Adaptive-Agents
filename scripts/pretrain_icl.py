@@ -56,13 +56,14 @@ def main() -> None:
     ap.add_argument("--ckpt-every", type=int, default=500)
     ap.add_argument("--val-batches", type=int, default=20)
     ap.add_argument("--threads", type=int, default=0, help="torch CPU threads (0 = default)")
+    ap.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     args = ap.parse_args()
     if args.threads:
         torch.set_num_threads(args.threads)
     args.run_dir.mkdir(parents=True, exist_ok=True)
 
     cfg = ModelConfig()
-    model = MoveTransformer(cfg)
+    model = MoveTransformer(cfg).to(args.device)
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=0.01)
     sched = torch.optim.lr_scheduler.LambdaLR(
         opt,
@@ -83,7 +84,7 @@ def main() -> None:
 
     batch_kw = dict(n_episodes=args.episodes_per_batch, windows_per_episode=args.windows_per_episode, context=cfg.context)
     val = [
-        tuple(torch.as_tensor(a) for a in pretraining_batch(VALIDATION_SEED_BASE + i, **batch_kw))
+        tuple(torch.as_tensor(a, device=args.device) for a in pretraining_batch(VALIDATION_SEED_BASE + i, **batch_kw))
         for i in range(args.val_batches)
     ]
     n_params = sum(p.numel() for p in model.parameters())
@@ -92,7 +93,7 @@ def main() -> None:
     t0 = time.time()
     while step < args.steps:
         model.train()
-        x, y, p = (torch.as_tensor(a) for a in pretraining_batch(PRETRAIN_SEED_BASE + step, **batch_kw))
+        x, y, p = (torch.as_tensor(a, device=args.device) for a in pretraining_batch(PRETRAIN_SEED_BASE + step, **batch_kw))
         ce, _ = losses(model, x, y, p)
         opt.zero_grad()
         ce.backward()
@@ -110,7 +111,7 @@ def main() -> None:
             improved = val_ce < best_val
             if improved:
                 best_val = val_ce
-                save_model(model, args.run_dir / "best.pt")
+                save_model(model, args.run_dir / "best.pt")  # load_model maps to CPU
             rec = dict(step=step, train_ce=ce.item(), val_ce=val_ce, val_excess=val_excess,
                        lr=sched.get_last_lr()[0], sec=round(time.time() - t0, 1))
             with open(args.run_dir / "log.jsonl", "a") as f:

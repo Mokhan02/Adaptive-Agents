@@ -79,3 +79,12 @@ def test_frozen_bundle_ties_offsets_to_weights(tmp_path):
     torch.save(bundle, tmp_path / "g.pt")
     with pytest.raises(ValueError):
         load_frozen(tmp_path / "g.pt")
+
+
+def test_fast_tuning_score_matches_episode_runner():
+    from regime.tuning import score_episode, score_in_context_fast
+
+    model = MoveTransformer(ModelConfig(context=50, d_model=16, n_heads=2, n_layers=2)).eval()
+    for i, tau in [(0, 0.1), (3, 0.5)]:
+        slow = score_episode(lambda: InContextAgent(model, temperature=tau), i)
+        assert score_in_context_fast(model, tau, i) == pytest.approx(slow, rel=1e-5, abs=1e-6)
