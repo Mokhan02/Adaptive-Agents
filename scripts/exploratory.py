@@ -514,12 +514,117 @@ def run_dimension() -> None:
                 verdict=d2_verdict, share_random_k2_at_or_below_readout=readout_vs_random)))
 
 
+def _layernorm(x: np.ndarray, eps: float = 1e-5) -> np.ndarray:
+    """Per-round LayerNorm without the affine part (rows = rounds)."""
+    mu = x.mean(-1, keepdims=True)
+    return (x - mu) / np.sqrt(x.var(-1, keepdims=True) + eps)
+
+
+def _ln_offsets(n_episodes: int = 200) -> np.ndarray:
+    """Per-move mean of the *normalized* final-position residual, per layer (the pre-registered
+    move-offset procedure, in LayerNorm space). Returns (n_layers + 1, 3, d)."""
+    import torch
+
+    from regime.analysis import make_agent
+    from regime.agents.in_context import MOVE_OFFSET_SEED_BASE
+    from regime.pretrain import sample_moves, sample_pretraining_opponent
+
+    model = make_agent("in_context").model
+    K = model.cfg.context
+    sums = np.zeros((model.cfg.n_layers + 1, 3, model.cfg.d_model))
+    counts = np.zeros(3)
+    with torch.no_grad():
+        for i in range(n_episodes):
+            rng = np.random.default_rng(MOVE_OFFSET_SEED_BASE + i)
+            moves = sample_moves(sample_pretraining_opponent(rng, 600).distributions(600), rng)
+            windows = torch.as_tensor(np.lib.stride_tricks.sliding_window_view(moves, K).copy())
+            _, resid = model(windows)
+            last = moves[K - 1 :]
+            for layer, r in enumerate(resid):
+                np.add.at(sums[layer], last, _layernorm(r[:, -1].double().numpy()))
+            counts += np.bincount(last, minlength=3)
+    return sums / counts[None, :, None]
+
+
+def _raw_run(kind: str, seed: int) -> dict:
+    """Study 1's episode, logging the *raw* (uncorrected) layer-1 and layer-2 residuals."""
+    import torch
+
+    from regime.agents.in_context import InContextAgent
+    from regime.analysis import TEST_PAIR, make_agent
+    from regime.env import RegimeSwitchOpponent
+    from regime.runner import run_episode
+
+    torch.set_num_threads(1)
+    cal = _load_cal("in_context")
+    base = make_agent("in_context")
+
+    class Raw(InContextAgent):
+        def internal_state(self):
+            r = self.residual_streams(corrected=False)
+            return np.concatenate([r[1], r[2]])
+
+    agent = Raw(base.model, temperature=base.temperature, move_offsets=base.move_offsets)
+    opp = (RegimeSwitchOpponent(*TEST_PAIR, switch_at=cal.switch_at) if kind == "switch"
+           else RegimeSwitchOpponent.no_switch(TEST_PAIR[0], switch_at=cal.switch_at))
+    log = run_episode(agent, opp, cal.n_rounds, seed)
+    d = log.states.shape[1] // 2
+    return dict(raw1=log.states[:, :d], raw2=log.states[:, d:], out=log.outputs, opp=log.opp_actions,
+                offsets=base.move_offsets)
+
+
+def run_layernorm() -> None:
+    """ANALYSIS_PLAN.md, "LayerNorm diagnostic"."""
+    from concurrent.futures import ProcessPoolExecutor
+    from functools import partial
+
+    from regime.analysis import ANALYSIS_SWITCH_SEEDS, CALIBRATION_CONTROL_SEEDS
+
+    cal = _load_cal("in_context")
+    a, W, L, h = cal.switch_at, cal.W, cal.L, cal.h
+    with ProcessPoolExecutor(4) as pool:
+        sw = list(pool.map(partial(_raw_run, "switch"), ANALYSIS_SWITCH_SEEDS, chunksize=5))
+        ct = list(pool.map(partial(_raw_run, "control"), CALIBRATION_CONTROL_SEEDS, chunksize=5))
+    out_d = [_disp(_centered(r["out"]), h) for r in sw]
+
+    # Reproduction: unnormalized corrected layer 1 through study 1's pipeline.
+    l1 = [lag_estimate(_disp(_std_state({"states": r["raw1"] - r["offsets"][1, r["opp"]]}, cal), h), o, a, W, L)
+          for r, o in zip(sw, out_d)]
+    confirmed = json.loads(Path("results/confirmatory/results.json").read_text())["agents"]["in_context"]["test_b"]["lags"]
+    assert l1 == confirmed, "rerun does not reproduce study 1's layer-1 lags"
+    print("reproduction check: layer-1 lags identical to study 1", flush=True)
+
+    ln_off = _ln_offsets()
+    res = {}
+    for layer, key in ((1, "raw1"), (2, "raw2")):
+        corr = lambda r: _layernorm(r[key]) - ln_off[layer][r["opp"]]
+        base = np.concatenate([corr(r)[cal.t_w :] for r in ct])
+        mean, std = base.mean(0), np.where(base.std(0) > 0, base.std(0), 1.0)
+        lags = [lag_estimate(_disp((corr(r) - mean) / std, h), o, a, W, L) for r, o in zip(sw, out_d)]
+        res[f"layer{layer}_layernorm"] = _lag_summary(lags)
+        print(_fmt(f"layer {layer}, LayerNorm-normalized", res[f"layer{layer}_layernorm"]), flush=True)
+
+    r1 = res["layer1_layernorm"]
+    lo, hi = r1["median_ci95"]
+    m = r1["median_lag"]
+    if -1.0 <= m <= 1.0 and lo <= 0 <= hi:
+        verdict = "supports magnitude drift through LayerNorm (one plausible mechanism)"
+    elif m <= -1.5 and hi < 0:
+        verdict = "disconfirmed: mechanism unresolved"
+    else:
+        verdict = "ambiguous: mechanism unresolved"
+    res["verdict"] = verdict
+    print("verdict:", verdict)
+    save("layernorm_diagnostic", res)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("which", choices=["saturation", "icl", "untrained", "remaining", "structural-null", "dimension"])
+    ap.add_argument("which", choices=["saturation", "icl", "untrained", "remaining", "structural-null", "dimension", "layernorm"])
     args = ap.parse_args()
     {"saturation": run_saturation, "icl": run_icl_followups, "untrained": run_untrained,
-     "remaining": run_remaining, "structural-null": run_structural_null, "dimension": run_dimension}[args.which]()
+     "remaining": run_remaining, "structural-null": run_structural_null, "dimension": run_dimension,
+     "layernorm": run_layernorm}[args.which]()
 
 
 if __name__ == "__main__":

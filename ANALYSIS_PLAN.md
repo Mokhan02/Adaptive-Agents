@@ -611,3 +611,40 @@ unembedding. If the residual's overall magnitude drifts slowly after a
 switch, every raw projection inherits that drift, while the output (which
 reads normalized residuals) does not. A test would compute displacement on
 the per-round normalized residual. It would be defined here before it runs.
+
+## LayerNorm diagnostic (2026-09-28, defined before running; the last mechanism check)
+
+**Hypothesis.** The residual's overall magnitude drifts slowly after a
+switch. Every raw direction inherits that drift, but the output reads a
+LayerNorm-normalized residual and does not.
+
+**The check.** Study 1's pipeline, with one step inserted first. Each
+round's *raw* residual (final position) is normalized the way the model's
+LayerNorm does it, without the affine part: center across the 64
+dimensions, divide by their standard deviation (ε = 1e-5). Then, as in
+study 1:
+- latest-move correction, with per-move means estimated *in the normalized
+  space* by the pre-registered procedure (200 pretraining-distribution
+  episodes, seeds 4,000,000+, full windows);
+- per-dimension standardization on calibration controls 10100–10199, rounds
+  [T_w, end);
+- displacement at h = 14, lag against the centered output scores (W = 86,
+  L = 43), Test B's summary, seeds 0–99.
+
+A reproduction check first asserts that the unnormalized layer-1 lags equal
+study 1's. **Layer 1 is primary.** Layer 2 is reported alongside and does
+not change the verdict.
+
+**Interpretation** (study 1's layer 1: −2.5 [−3, −2]; endpoints as
+stated):
+- **Supports magnitude drift through LayerNorm:** median in [−1.0, 1.0]
+  (closed) *and* the 95% CI contains 0 (closed: lo ≤ 0 ≤ hi). The write-up
+  then calls it one plausible mechanism consistent with the data, not the
+  only one.
+- **Disconfirmed:** median ≤ −1.5 (closed) *and* the CI's upper end is < 0
+  (strict). The write-up then says the mechanism is unresolved.
+- **Anything else:** ambiguous. The write-up says the mechanism is
+  unresolved.
+
+**Stop rule.** Whatever the outcome, no further mechanism diagnostics are
+run. The next step is the write-up.
