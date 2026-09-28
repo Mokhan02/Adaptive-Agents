@@ -84,9 +84,14 @@ displacement, a pattern also present at a layer with no possible information
 lag. It therefore does not support a claim about representational timing.
 At most about half a round could be specific to layer 1, and that difference
 has not been tested.
-The likely mechanism is that a 64-dimensional residual's displacement is
-dominated by directions the output never reads, which rise and settle on
-their own schedule. The small early bump in the overlay above is a
+The mechanism is open. We first suspected a dimension mismatch: a
+64-dimensional residual's displacement dominated by directions the output
+never reads. A pre-registered sweep of random projections refuted that.
+Random slices as small as 4 dimensions lag as much as the full state (about
+−2.4 rounds at every k from 4 to 64), so almost any direction of the residual
+moves about 2 rounds after the output. The output's own readout directions
+must therefore behave differently from typical directions. Details are in
+[ANALYSIS_PLAN.md](ANALYSIS_PLAN.md) ("Dimension diagnostics"). The small early bump in the overlay above is a
 curve-shape effect as well: in a dry run, layer 2 showed the same "state
 first" pattern early in the rise, where a real early signal is impossible.
 

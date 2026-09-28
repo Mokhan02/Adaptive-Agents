@@ -576,3 +576,38 @@ readout subspace is 2-dimensional, and the sweep starts at k = 2.
 - **Also reported:** D1's readout lag against the k = 2 random distribution,
   to show whether the readout directions behave differently from random 2-D
   projections.
+
+### Dimension diagnostics: results (2026-09-28)
+
+`results/exploratory/dimension_diagnostics.json`. The code was committed
+(`46f7a69`) before the run. The rerun reproduced study 1's layer-1 lags
+exactly, and all 20 k = 64 rotations did too.
+
+**D1, readout projection: invalid.** The held-out R² was 0.756 on
+pretraining episodes but **−0.018 on the A → B calibration runs**, below
+the 0.70 condition. A linear readout of layer 1 fitted on the pretraining
+distribution does not carry over to the held-out test strategies. Two
+likely reasons: A and B lie in the excluded region of strategy space, and
+within A → B episodes the logits vary little, which makes R² harsh. Its lag
+(−3.0 [−4, −2]) is not interpreted, per the rule.
+
+**D2, dimension sweep: flat, not dimension per se.**
+
+| k | 2 | 4 | 8 | 16 | 32 | 64 |
+|---|---|---|---|---|---|---|
+| Mean \|median lag\| over 20 projections | 3.27 | 2.40 | 2.45 | 2.35 | 2.33 | 2.50 |
+| Range of medians | −10.5 to 10.5 | −3 to −1 | −3 to −1.5 | −3 to −2 | −3 to −2 | −2.5 |
+
+One-sided Spearman ρ = −0.037, p = 0.657. Random slices as small as 4
+dimensions lag like the full state; at k = 2, estimates become noisy rather
+than smaller. **This refutes the dimension-mismatch explanation** given in
+the structural-null section and the README, which has been corrected. The
+lag is a property of almost every direction of the residual. The output's
+readout directions, which by construction don't lag the logits, must be
+atypical.
+
+**Open hypothesis, not tested.** The model applies LayerNorm before the
+unembedding. If the residual's overall magnitude drifts slowly after a
+switch, every raw projection inherits that drift, while the output (which
+reads normalized residuals) does not. A test would compute displacement on
+the per-round normalized residual. It would be defined here before it runs.
