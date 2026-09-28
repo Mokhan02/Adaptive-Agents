@@ -881,3 +881,19 @@ calibration window. The rule takes the maximum over the references, so this
 one slow reference moves every agent's score window to the last 300 rounds.
 It is applied as written. The effect is a later, shorter scoring window,
 which is conservative, not a bias.
+
+## Study 3 dry run (2026-09-28, before the tag)
+
+The opponent was deliberately different (M = 7, ε = 0.5), with seeds
+69000–69019. The pipeline completed and wrote every output.
+
+**Bug caught and fixed.** The H2 outcome label ignored direction: a pair
+where the first agent scored *lower* was labeled "above". The label now
+names the agent that is above, and a test covers it.
+
+**Disclosure.** The dry run's printed numbers were seen. Its opponent is
+from the same family as the test opponent, so they preview direction:
+fine-tuning +0.020, RL −0.041, in-context −0.105, with entropies in the same
+order (H1 holds there). Every rule was already fixed. Nothing was adjusted
+in response, and the test condition (M = 5, ε = 0.1, seeds 60000–60399)
+has not been run. Future dry runs should suppress their summary numbers.

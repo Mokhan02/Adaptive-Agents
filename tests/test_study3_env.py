@@ -68,3 +68,15 @@ def test_study3_rule_helpers():
     np.testing.assert_allclose(trailing_entropy(np.array([0, 1, 2] * 10), 3)[2:], np.log(3))
     assert cycle_period(np.array([0, 1, 2] * 100)) == 3
     assert cycle_period(np.zeros(300, dtype=int)) is None
+
+
+def test_pair_outcome_names_the_agent_above():
+    import sys
+
+    sys.path.insert(0, "scripts")
+    from study3 import pair_outcome
+
+    assert pair_outcome("x", "y", -0.06, [-0.07, -0.05], 0.001) == "y above x by at least the effect of interest"
+    assert pair_outcome("x", "y", 0.01, [0.005, 0.015], 0.01) == "x above y by less than the effect of interest"
+    assert pair_outcome("x", "y", 0.001, [-0.01, 0.012], 0.5) == "equivalent within the margin"
+    assert pair_outcome("x", "y", 0.01, [-0.01, 0.03], 0.5) == "inconclusive"
