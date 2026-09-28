@@ -1,0 +1,27 @@
+{
+  "label": "exploratory",
+  "3_untrained_corrected": {
+    "median_lag": 0.0,
+    "median_ci95": [
+      0.0,
+      0.0
+    ],
+    "n_positive": 0,
+    "n_negative": 0,
+    "n_zero": 100,
+    "sign_test_p": 1.0,
+    "wilcoxon_p": null
+  },
+  "3_untrained_raw": {
+    "median_lag": 0.0,
+    "median_ci95": [
+      0.0,
+      0.0
+    ],
+    "n_positive": 0,
+    "n_negative": 0,
+    "n_zero": 100,
+    "sign_test_p": 1.0,
+    "wilcoxon_p": null
+  }
+}

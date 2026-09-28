@@ -354,3 +354,53 @@ Run in this order. Follow-up 1 uses no real seeds.
    between allowed pairs with TV ∈ [0.35, 0.45], with p and q drawn by the
    pretraining rules. Seeds 7,000,000–7,000,099. Excess regret for all three
    agents, to compare with A → B.
+
+### Exploratory follow-up results (2026-09-27)
+
+Outputs are in `results/exploratory/`. All are exploratory. Reruns of
+confirmatory episodes reproduced the confirmatory lags exactly.
+
+| # | Check | Median lag [95% CI] | +/−/0 | Sign p |
+|---|---|---|---|---|
+| — | Confirmatory (reference) | −2.5 [−3, −2] | 8/92/0 | 3e−19 |
+| 1 | Planted, true lag 0, saturating output β = 1, 2, 4, 8 | 0 at every β | e.g. β = 8: 43/36/21 | ≥ 0.2 |
+| 2 | Behavior = logits (no saturation) | −2.0 [−3, −2] | 6/94/0 | 2e−21 |
+| 3 | Untrained network, corrected / raw state | 0 / 0 | 0/0/100 both | 1 |
+| 4 | h = 7 / h = 28 | −2.5 / −2.0 | 24/76/0, 1/99/0 | 2e−7, 2e−28 |
+| 5 | Onset difference (2 seeds missing an onset) | −3.0 [−5, −1] | 36/62/0 | 0.011 |
+| 7 | Fine-tuning, weight-vector state | −5.0 [−6, −4] | 6/85/9 | 6e−19 |
+
+- **Saturation (1, 2):** it does not produce the negative lag. The planted
+  zero-lag case stays at 0 under any saturation, and the unsaturated logit
+  behavior gives the same answer (−2.0, 94 of 100 seeds negative).
+- **Learning (3):** the untrained network's state and outputs move in
+  lockstep (lag exactly 0), so the −2.5 (and the raw state's +4.5) arise
+  with training, not from the architecture or the pipeline. This control
+  is weak, because a lockstep network is not a matched comparison.
+- **Robustness (4, 5):** the sign holds from h = 7 to 28, and under a
+  threshold-based onset definition that doesn't use cross-correlation.
+- **Fine-tuning weights (7):** the weight vector lags the logits by about
+  5 rounds, the same direction as the in-context result. Mechanistically,
+  the input window changes the logits immediately, and gradient steps catch
+  up afterwards. h = 83 for this agent, so the lag is small relative to
+  the resolution.
+
+**Regret (6, 8), 100 seeds each, 200/600 hard switch:**
+
+| Agent | Total regret A → B | Excess A → B | Excess, control pairs (TV 0.35–0.45) |
+|---|---|---|---|
+| In-context | **24.5 ± 0.9** | 20.7 ± 2.2 | 22.8 ± 4.3 |
+| Change-aware RL | 112.5 ± 1.4 | **7.6 ± 2.4** | 21.5 ± 3.8 |
+| Fine-tuning | 139.7 ± 2.3 | 82.7 ± 3.6 | 57.0 ± 5.4 |
+
+- **Total regret reverses the top of the pre-registered ranking.** The
+  in-context agent loses 4–5× less in total than RL. RL's excess-regret
+  win comes from subtracting its own loose baseline.
+- **The hold-out claim is refuted, not supported.** On allowed pairs of
+  the same size and switch type, the in-context agent's excess regret is
+  22.8 ± 4.3, indistinguishable from A → B (20.7). The rise from the tuning
+  score (11.88) is explained by the switch type and size, not by the
+  excluded strategies. The write-up must not claim the hold-out affected
+  performance.
+- **A → B is unusually easy for RL** (7.6 against 21.5 on comparable
+  pairs). On comparable pairs, in-context and RL are tied on excess regret.

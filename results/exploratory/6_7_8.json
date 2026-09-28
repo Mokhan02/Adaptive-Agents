@@ -1,0 +1,69 @@
+{
+  "label": "exploratory",
+  "in_context": {
+    "6_total_regret_A_to_B": [
+      24.51043952125329,
+      0.8807662945750151
+    ],
+    "excess_regret_A_to_B": [
+      20.730010117286103,
+      2.2182734234590145
+    ],
+    "8_excess_regret_holdout_control": [
+      22.807764021882896,
+      4.261338045565702
+    ],
+    "8_total_regret_holdout_control": [
+      18.440970572212954,
+      1.0968865386663893
+    ]
+  },
+  "fine_tune": {
+    "6_total_regret_A_to_B": [
+      139.66244474493755,
+      2.288536969132108
+    ],
+    "excess_regret_A_to_B": [
+      82.71560431286166,
+      3.639402187762588
+    ],
+    "8_excess_regret_holdout_control": [
+      56.96592516373991,
+      5.401607827619548
+    ],
+    "8_total_regret_holdout_control": [
+      113.1815044310044,
+      4.420748440992295
+    ]
+  },
+  "change_aware": {
+    "6_total_regret_A_to_B": [
+      112.45423188492259,
+      1.386899764912736
+    ],
+    "excess_regret_A_to_B": [
+      7.593635491607511,
+      2.3770323584933846
+    ],
+    "8_excess_regret_holdout_control": [
+      21.454076161875367,
+      3.759682621831813
+    ],
+    "8_total_regret_holdout_control": [
+      86.80175263157231,
+      2.2863737013061005
+    ]
+  },
+  "7_fine_tune_weight_displacement": {
+    "median_lag": -5.0,
+    "median_ci95": [
+      -6.0,
+      -4.0
+    ],
+    "n_positive": 6,
+    "n_negative": 85,
+    "n_zero": 9,
+    "sign_test_p": 5.782725134355011e-19,
+    "wilcoxon_p": 1.786514497757481e-14
+  }
+}

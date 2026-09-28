@@ -1,0 +1,53 @@
+{
+  "label": "exploratory",
+  "true_lag": 0,
+  "h": 14,
+  "W": 86,
+  "L": 43,
+  "by_beta": {
+    "1": {
+      "median_lag": 0.0,
+      "median_ci95": [
+        0.0,
+        0.0
+      ],
+      "n_positive": 0,
+      "n_negative": 0,
+      "n_zero": 100,
+      "sign_test_p": 1.0
+    },
+    "2": {
+      "median_lag": 0.0,
+      "median_ci95": [
+        0.0,
+        0.0
+      ],
+      "n_positive": 2,
+      "n_negative": 0,
+      "n_zero": 98,
+      "sign_test_p": 0.5
+    },
+    "4": {
+      "median_lag": 0.0,
+      "median_ci95": [
+        0.0,
+        0.0
+      ],
+      "n_positive": 20,
+      "n_negative": 12,
+      "n_zero": 68,
+      "sign_test_p": 0.21532714972272515
+    },
+    "8": {
+      "median_lag": 0.0,
+      "median_ci95": [
+        0.0,
+        1.0
+      ],
+      "n_positive": 43,
+      "n_negative": 36,
+      "n_zero": 21,
+      "sign_test_p": 0.499896876860327
+    }
+  }
+}
