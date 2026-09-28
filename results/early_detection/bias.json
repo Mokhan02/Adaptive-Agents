@@ -1,0 +1,33 @@
+{
+  "n": 20000,
+  "by_pair_type": {
+    "both_detected": {
+      "share": 0.28435,
+      "n_state_first": 2550,
+      "n_output_first": 3137,
+      "n_tie": 0
+    },
+    "state_only_censored": {
+      "share": 0.19255,
+      "n_state_first": 0,
+      "n_output_first": 3851,
+      "n_tie": 0
+    },
+    "output_only_censored": {
+      "share": 0.2341,
+      "n_state_first": 4682,
+      "n_output_first": 0,
+      "n_tie": 0
+    },
+    "both_censored": {
+      "share": 0.289,
+      "n_state_first": 0,
+      "n_output_first": 0,
+      "n_tie": 0
+    }
+  },
+  "detection_rate": {
+    "state": 0.51845,
+    "output": 0.4769
+  }
+}

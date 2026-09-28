@@ -97,3 +97,116 @@ def paired_test(deltas, n_boot: int = 10_000, seed: int = 0) -> dict:
     return dict(n=len(x), n_ties=int((x == 0).sum()), n_positive=n_pos, n_negative=n_neg, sign_test_p=sign_p,
                 median_advantage=med, median_ci95=[lo, hi], wilcoxon_p=wil,
                 outcome=outcome(sign_p, med, hi, n_pos, n_neg), deltas=x.tolist())
+
+
+# --- Primary test (amended): normalized mean-curve timing ---------------------
+#
+# The operational detector above is infeasible as designed (power analysis in
+# PREREG_EARLY_DETECTION.md). The primary test compares *when* each signal's
+# across-run mean response reaches a fraction of its own rise, which removes
+# the difference in response strength between the signals.
+
+FRACTIONS = (0.10, 0.25, 0.50)
+MARGIN = 2.0  # rounds; the effect of interest, in both directions
+
+
+SMOOTH = 5  # centered moving average applied to each mean curve (same for both signals)
+SUSTAIN = 3  # a crossing must hold for this many consecutive rounds
+
+
+def smooth(curve: np.ndarray, k: int = SMOOTH) -> np.ndarray:
+    """Centered moving average; edges use the available rounds. Shifts both signals identically."""
+    c = np.cumsum(np.insert(curve, 0, 0.0))
+    i = np.arange(len(curve))
+    lo, hi = np.maximum(0, i - k // 2), np.minimum(len(curve), i + k // 2 + 1)
+    return (c[hi] - c[lo]) / (hi - lo)
+
+
+def crossfit_rise(x_a: np.ndarray, x_b: np.ndarray, base: float, W: int) -> float:
+    """Rise without max-selection bias: the peak's location from one half of the runs, its value
+    from the other half at that location, averaged over both directions (x_a, x_b: smoothed means)."""
+    i_a, i_b = W + int(np.argmax(x_a[W:])), W + int(np.argmax(x_b[W:]))
+    return float((x_b[i_a] + x_a[i_b]) / 2 - base)
+
+
+def crossing_time(curve: np.ndarray, W: int, fraction: float, rise: float | None = None) -> float:
+    """Rounds after the switch at which a mean curve first reaches `fraction` of its rise.
+
+    `curve` covers [switch_at - W, switch_at + W] (length 2W + 1; index W is the switch).
+    The curve is smoothed (SMOOTH). Baseline: mean over the W pre-switch rounds. Rise: `rise` if
+    given (the cross-fitted rise, see `crossfit_rise`), else the post-switch max minus baseline.
+    The crossing is the first post-switch round j at which the normalized curve is >= fraction for
+    SUSTAIN consecutive rounds, linearly interpolated with round j - 1.
+    """
+    x = smooth(curve)
+    base = x[:W].mean()
+    n = (x - base) / (rise if rise is not None else x[W:].max() - base)
+    above = n >= fraction
+    for j in range(W, len(n) - SUSTAIN + 1):
+        if above[j : j + SUSTAIN].all():
+            if j == W or n[j - 1] >= fraction:
+                return float(j - W)
+            return float(j - 1 - W + (fraction - n[j - 1]) / (n[j] - n[j - 1]))
+    return float(W)
+
+
+def signal_crossings(runs: np.ndarray, W: int, fractions, weights: np.ndarray | None = None) -> list[float]:
+    """Crossings of one signal's (weighted) mean curve, with a cross-fitted rise.
+    The halves are the even- and odd-indexed runs."""
+    w = np.full(len(runs), 1.0) if weights is None else weights
+    halves = []
+    for idx in (slice(0, None, 2), slice(1, None, 2)):
+        ww = w[idx]
+        halves.append(smooth((ww @ runs[idx]) / ww.sum()))
+    full = (w @ runs) / w.sum()
+    base = smooth(full)[:W].mean()
+    rise = crossfit_rise(halves[0], halves[1], base, W)
+    return [crossing_time(full, W, f, rise) for f in fractions]
+
+
+def timing_differences(state: np.ndarray, output: np.ndarray, W: int, fractions=FRACTIONS,
+                       weights: np.ndarray | None = None) -> np.ndarray:
+    """delta_f = crossing(output) - crossing(state) for each fraction; positive = state first.
+    `state`, `output`: (runs, 2W + 1) displacement windows, paired by run."""
+    return np.array(signal_crossings(output, W, fractions, weights)) - np.array(signal_crossings(state, W, fractions, weights))
+
+
+def bootstrap_timing(state: np.ndarray, output: np.ndarray, W: int, n_boot: int = 10_000, seed: int = 0,
+                     fractions=FRACTIONS) -> dict:
+    """Resample runs (paired across signals) and recompute mean curves, rises and crossings in each
+    resample. Resampling is by integer weights, so the even/odd halves stay fixed."""
+    rng = np.random.default_rng(seed)
+    n = len(state)
+    est = timing_differences(state, output, W, fractions)
+    boots = np.empty((n_boot, len(fractions)))
+    for b in range(n_boot):
+        w = np.bincount(rng.integers(0, n, n), minlength=n).astype(float)
+        if w[0::2].sum() == 0 or w[1::2].sum() == 0:
+            w = np.ones(n)
+        boots[b] = timing_differences(state, output, W, fractions, w)
+    p = np.minimum(1.0, 2 * np.minimum((boots <= 0).mean(0), (boots >= 0).mean(0)))
+    p = np.maximum(p, 1 / n_boot)
+    return dict(estimate=est.tolist(), ci95=np.percentile(boots, [2.5, 97.5], axis=0).T.tolist(), p=p.tolist())
+
+
+def holm(pvalues) -> list[float]:
+    p = np.asarray(pvalues)
+    order = np.argsort(p)
+    adj = np.empty_like(p)
+    running = 0.0
+    for rank, i in enumerate(order):
+        running = max(running, (len(p) - rank) * p[i])
+        adj[i] = min(1.0, running)
+    return adj.tolist()
+
+
+def timing_outcome(estimate: float, ci: list[float], p_adjusted: float, margin: float = MARGIN) -> str:
+    """Outcome categories for one fraction, in both directions (PREREG_EARLY_DETECTION.md)."""
+    lo, hi = ci
+    if p_adjusted < 0.05:
+        side = "state first" if estimate > 0 else "output first"
+        size = f"by >= {margin:g} rounds" if abs(estimate) >= margin else f"by < {margin:g} rounds"
+        return f"{side} {size}"
+    if -margin < lo and hi < margin:
+        return f"no difference of interest (95% CI within ±{margin:g} rounds)"
+    return "inconclusive"

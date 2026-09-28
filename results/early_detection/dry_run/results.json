@@ -1,0 +1,69 @@
+{
+  "study": "early detection (study 2)",
+  "commit": "c43a715a953680f69a2e1454d5d2a5d69acd0b0c (dry run)",
+  "tag": "early-detection-v1",
+  "dry_run": true,
+  "pair": [
+    [
+      0.1,
+      0.8,
+      0.1
+    ],
+    [
+      0.1,
+      0.1,
+      0.8
+    ]
+  ],
+  "n_runs": 60,
+  "seeds": [
+    39000,
+    39059
+  ],
+  "operational_test": "not run: infeasible as designed (power analysis, PREREG_EARLY_DETECTION.md)",
+  "primary_fraction": "50%",
+  "primary_outcome": "output first by >= 2 rounds",
+  "convention": "estimate = crossing(output) - crossing(state), rounds; positive = state first",
+  "by_fraction": {
+    "10%": {
+      "estimate": 1.2268322276405252,
+      "ci95": [
+        0.6735919109672694,
+        1.802730968633196
+      ],
+      "p": 0.0001,
+      "p_holm": 0.00030000000000000003,
+      "outcome": "state first by < 2 rounds"
+    },
+    "25%": {
+      "estimate": 3.3949948934673735,
+      "ci95": [
+        2.4355820227377585,
+        4.035697165588256
+      ],
+      "p": 0.0006,
+      "p_holm": 0.0006,
+      "outcome": "state first by >= 2 rounds"
+    },
+    "50%": {
+      "estimate": -5.431162024688027,
+      "ci95": [
+        -5.950373269109488,
+        -4.950246745068321
+      ],
+      "p": 0.0001,
+      "p_holm": 0.00030000000000000003,
+      "outcome": "output first by >= 2 rounds"
+    }
+  },
+  "negative_control_layer2_vs_output": {
+    "fraction": "50%",
+    "estimate": -5.12269514566628,
+    "ci95": [
+      -5.605700255798857,
+      -4.56363953226294
+    ],
+    "expected": "about 0"
+  },
+  "underpowered": false
+}

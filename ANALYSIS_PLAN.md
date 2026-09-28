@@ -404,3 +404,62 @@ confirmatory episodes reproduced the confirmatory lags exactly.
   performance.
 - **A → B is unusually easy for RL** (7.6 against 21.5 on comparable
   pairs). On comparable pairs, in-context and RL are tied on excess regret.
+
+## Structural-null check (2026-09-28, defined before running)
+
+**Why.** Study 2's dry run (`results/early_detection/dry_run/`: the non-test
+pair (0.1, 0.8, 0.1) → (0.1, 0.1, 0.8), seeds 39000–39059) gave a
+normalized-timing difference of −5.1 rounds at 50% between layer 2 and the
+output, and −6.0 against the logits. Layer 2 determines the logits in the
+same round, so no information lag is possible there. The method is measuring
+the *shape* of displacement curves: a 64-dimensional residual's displacement
+is dominated by directions the output never reads. Study 1 compared the same
+kinds of signal with cross-correlation and had no layer-2 control.
+
+**The early bump is already compromised.** In the same dry run, layer 2
+showed the "state first at 10%" pattern (+1.2 rounds against the output)
+that the bump suggested for layer 1. A real early signal is structurally
+impossible at layer 2. So the bump is recorded as a curve-shape effect,
+independently of the check below.
+
+**The check.** Study 1's exact pipeline, with only the state swapped:
+- **State:** the layer-2 residual at the final position, latest-move
+  corrected using the frozen model's own layer-2 offsets (fitted by the same
+  pre-registered procedure as layer 1's, on pretraining-distribution
+  episodes), and standardized per dimension on study 1's calibration
+  controls (10100–10199, rounds [T_w, end)), as layer 1 was.
+- **Behavior:** the centered output scores.
+- **Lag:** h = 14, W = 86, L = 43, argmax of the linear cross-correlation,
+  the same tie rules, and Test B's summary.
+- **Seeds 0–99.** A reproduction check first asserts that the rerun gives
+  study 1's layer-1 lags exactly.
+- **Also reported:** raw layer 2 (uncorrected, unstandardized, as study 1's
+  raw-state exploratory analysis).
+
+**Why seeds 0–99 are the right seeds.** This is a structural diagnostic of
+a frozen model and an already-run pipeline, not a new confirmatory test. It
+asks what this exact pipeline would have said about a signal whose true
+information lag is known to be zero, on the same data. If it later grows
+into a claim of its own (a redesigned study 2), that claim needs fresh
+seeds.
+
+**Interpretation, fixed now.** Study 1: median −2.5, 95% CI [−3, −2],
+92 of 100 seeds negative.
+- **Comparable, so the artifact explanation is supported:** corrected
+  layer-2 median lag in [−3.5, −1.5], its CI overlapping [−3, −2], and at
+  least 80% of nonzero seeds negative. The headline is then reframed:
+  "residual-stream displacement peaks after output displacement, a pattern
+  also present at a layer with no possible information lag, so it does not
+  support a claim about representational timing."
+- **Meaningfully different, so the artifact explanation is weakened:**
+  median lag above −1.0, *or* fewer than 60% of nonzero seeds negative, with
+  a CI that does not overlap [−3, −2]. This does not clear layer 1: the
+  difference between the layers then needs its own explanation.
+- **Anything else is intermediate:** "partly explained by curve shape".
+  Both numbers are reported side by side.
+
+**Study 2 is on hold.** Its draft pre-registration (PREREG_EARLY_DETECTION.md)
+is not frozen. Its negative-control expectation of "about 0" was wrong.
+Any redesign would compare the state against a structural null (layer 2,
+or a dimension-matched projection of the state) rather than against zero,
+and it will be specified only after this check is in.

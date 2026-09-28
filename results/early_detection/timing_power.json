@@ -1,0 +1,179 @@
+{
+  "rule": "Primary fraction: the lowest of 10/25/50% whose planted-null false-positive rate is <= 6% at every amplitude ratio (0.4, 1, 2.5, measured) and whose power at the measured ratio is >= 80%, at the smallest seed count where any fraction qualifies. If none qualifies at 1600, the primary is 50% at 1600, declared underpowered.",
+  "fractions": [
+    0.1,
+    0.25,
+    0.5
+  ],
+  "noise_seeds": "controls 10100-10199 and 1000-1099",
+  "shape_seeds": "calibration switch runs 10000-10099 (output mean response)",
+  "snr": {
+    "state_l1": 0.6221010939797869,
+    "output": 3.317153693471567
+  },
+  "measured_state_to_output_snr_ratio": 0.1875406301505213,
+  "experiments": 100,
+  "n_boot": 200,
+  "by_n": {
+    "400": {
+      "null_fp_0.4": [
+        0.11,
+        0.05,
+        0.06
+      ],
+      "null_mean_estimate_0.4": [
+        -0.0,
+        0.0,
+        0.0
+      ],
+      "null_fp_1": [
+        0.04,
+        0.09,
+        0.08
+      ],
+      "null_mean_estimate_1": [
+        -0.02,
+        -0.01,
+        -0.01
+      ],
+      "null_fp_2.5": [
+        0.1,
+        0.08,
+        0.06
+      ],
+      "null_mean_estimate_2.5": [
+        -0.12,
+        -0.08,
+        -0.05
+      ],
+      "null_fp_measured": [
+        0.04,
+        0.06,
+        0.03
+      ],
+      "null_mean_estimate_measured": [
+        0.0,
+        0.15,
+        0.08
+      ],
+      "power_at_measured": [
+        0.91,
+        0.98,
+        1.0
+      ],
+      "mean_estimate_at_effect": [
+        1.16,
+        1.98,
+        2.02
+      ]
+    },
+    "800": {
+      "null_fp_0.4": [
+        0.04,
+        0.02,
+        0.04
+      ],
+      "null_mean_estimate_0.4": [
+        -0.02,
+        -0.0,
+        -0.02
+      ],
+      "null_fp_1": [
+        0.04,
+        0.05,
+        0.08
+      ],
+      "null_mean_estimate_1": [
+        -0.03,
+        -0.01,
+        -0.02
+      ],
+      "null_fp_2.5": [
+        0.07,
+        0.06,
+        0.07
+      ],
+      "null_mean_estimate_2.5": [
+        -0.04,
+        -0.03,
+        -0.03
+      ],
+      "null_fp_measured": [
+        0.09,
+        0.07,
+        0.02
+      ],
+      "null_mean_estimate_measured": [
+        0.01,
+        0.1,
+        0.01
+      ],
+      "power_at_measured": [
+        0.98,
+        1.0,
+        1.0
+      ],
+      "mean_estimate_at_effect": [
+        1.16,
+        2.03,
+        2.1
+      ]
+    },
+    "1600": {
+      "null_fp_0.4": [
+        0.09,
+        0.04,
+        0.02
+      ],
+      "null_mean_estimate_0.4": [
+        -0.03,
+        0.0,
+        -0.01
+      ],
+      "null_fp_1": [
+        0.04,
+        0.05,
+        0.04
+      ],
+      "null_mean_estimate_1": [
+        -0.03,
+        -0.02,
+        -0.02
+      ],
+      "null_fp_2.5": [
+        0.03,
+        0.06,
+        0.06
+      ],
+      "null_mean_estimate_2.5": [
+        -0.03,
+        -0.02,
+        -0.02
+      ],
+      "null_fp_measured": [
+        0.05,
+        0.07,
+        0.04
+      ],
+      "null_mean_estimate_measured": [
+        -0.05,
+        0.05,
+        0.03
+      ],
+      "power_at_measured": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "mean_estimate_at_effect": [
+        1.16,
+        1.96,
+        2.01
+      ]
+    }
+  },
+  "primary": {
+    "fraction": 0.5,
+    "n": 1600
+  }
+}
