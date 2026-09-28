@@ -1,0 +1,41 @@
+{
+  "seeds_used": "calibration controls 10100-10199, calibration switch runs 10000-10099 (old seeds only)",
+  "thresholds_for_power": {
+    "state_l1": 18.213163153137135,
+    "output": 0.5727329139583003
+  },
+  "response_over_threshold": {
+    "state_l1": 0.12615660302545523,
+    "output": 0.32903770542034355
+  },
+  "experiments_per_cell": 100,
+  "by_n": {
+    "1600": {
+      "outcomes_at_effect_of_interest": {
+        "early detection supported": 0.22,
+        "effect of interest excluded": 0.14,
+        "inconclusive": 0.59,
+        "real early-detection effect below the size of interest (< 2 rounds)": 0.05
+      },
+      "outcomes_at_null": {
+        "early detection supported": 0.08,
+        "effect of interest excluded": 0.22,
+        "inconclusive": 0.7
+      }
+    },
+    "3200": {
+      "outcomes_at_effect_of_interest": {
+        "early detection supported": 0.1,
+        "effect of interest excluded": 0.21,
+        "inconclusive": 0.41,
+        "real early-detection effect below the size of interest (< 2 rounds)": 0.28
+      },
+      "outcomes_at_null": {
+        "early detection supported": 0.03,
+        "effect of interest excluded": 0.4,
+        "inconclusive": 0.41,
+        "real early-detection effect below the size of interest (< 2 rounds)": 0.16
+      }
+    }
+  }
+}

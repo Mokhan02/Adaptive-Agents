@@ -1,0 +1,53 @@
+{
+  "seeds_used": "calibration controls 10100-10199, calibration switch runs 10000-10099",
+  "signals": {
+    "state_l1": {
+      "mean": 7.903821438811501,
+      "sd": 4.025263911484452,
+      "threshold": 18.213163153137135,
+      "threshold_z": 2.561159203726276,
+      "lag1_autocorr": 0.026303770475847532,
+      "response_over_threshold": 0.12615660302545523
+    },
+    "output": {
+      "mean": 0.1659990526602347,
+      "sd": 0.09143563250398377,
+      "threshold": 0.5727329139583003,
+      "threshold_z": 4.44830806283693,
+      "lag1_autocorr": 0.713927971574262,
+      "response_over_threshold": 0.32903770542034355
+    }
+  },
+  "identical_onset_ramps": {
+    "0.5": {
+      "state_l1": {
+        "median_delay": 14.0,
+        "censored": 0
+      },
+      "output": {
+        "median_delay": 27.0,
+        "censored": 8
+      }
+    },
+    "1.0": {
+      "state_l1": {
+        "median_delay": 10.0,
+        "censored": 0
+      },
+      "output": {
+        "median_delay": 13.0,
+        "censored": 0
+      }
+    },
+    "2.0": {
+      "state_l1": {
+        "median_delay": 8.0,
+        "censored": 0
+      },
+      "output": {
+        "median_delay": 9.0,
+        "censored": 0
+      }
+    }
+  }
+}

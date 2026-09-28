@@ -1,0 +1,67 @@
+{
+  "seeds_used": "calibration controls 10100-10199, calibration switch runs 10000-10099 (old seeds only)",
+  "thresholds_for_power": {
+    "state_l1": 18.213163153137135,
+    "output": 0.5727329139583003
+  },
+  "response_over_threshold": {
+    "state_l1": 0.12615660302545523,
+    "output": 0.32903770542034355
+  },
+  "experiments_per_cell": 200,
+  "by_n": {
+    "100": {
+      "outcomes_at_effect_of_interest": {
+        "early detection supported": 0.05,
+        "effect of interest excluded": 0.045,
+        "inconclusive": 0.9,
+        "output detects first": 0.005
+      },
+      "outcomes_at_null": {
+        "early detection supported": 0.01,
+        "effect of interest excluded": 0.04,
+        "inconclusive": 0.935,
+        "output detects first": 0.015
+      }
+    },
+    "200": {
+      "outcomes_at_effect_of_interest": {
+        "early detection supported": 0.035,
+        "effect of interest excluded": 0.04,
+        "inconclusive": 0.925
+      },
+      "outcomes_at_null": {
+        "early detection supported": 0.035,
+        "effect of interest excluded": 0.04,
+        "inconclusive": 0.92,
+        "output detects first": 0.005
+      }
+    },
+    "400": {
+      "outcomes_at_effect_of_interest": {
+        "early detection supported": 0.08,
+        "effect of interest excluded": 0.05,
+        "inconclusive": 0.87
+      },
+      "outcomes_at_null": {
+        "early detection supported": 0.045,
+        "effect of interest excluded": 0.08,
+        "inconclusive": 0.855,
+        "output detects first": 0.02
+      }
+    },
+    "800": {
+      "outcomes_at_effect_of_interest": {
+        "early detection supported": 0.11,
+        "effect of interest excluded": 0.095,
+        "inconclusive": 0.795
+      },
+      "outcomes_at_null": {
+        "early detection supported": 0.06,
+        "effect of interest excluded": 0.115,
+        "inconclusive": 0.815,
+        "output detects first": 0.01
+      }
+    }
+  }
+}
