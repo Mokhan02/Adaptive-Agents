@@ -1,0 +1,57 @@
+{
+  "M": 5,
+  "M_rule_failed": false,
+  "selection": {
+    "5": {
+      "means": {
+        "uniform": 0.0,
+        "always_rock": -0.9000000000000006,
+        "freq_w20": -0.47566285714285717,
+        "freq_w50": -0.4481485714285715,
+        "freq_all": -0.2410971428571429
+      },
+      "ses": {
+        "uniform": 0.0,
+        "always_rock": 2.2204460492503132e-17,
+        "freq_w20": 0.003444030932094614,
+        "freq_w50": 0.006959226417248589,
+        "freq_all": 0.0011117868133627721
+      },
+      "all_pairs_separated": true
+    }
+  },
+  "eps": 0.1,
+  "T_w": 858,
+  "T_w_by_reference": {
+    "uniform": 0,
+    "always_rock": 49,
+    "freq_w20": 285,
+    "freq_w50": 637,
+    "freq_all": 858
+  },
+  "n_rounds": 1158,
+  "score_sd_by_reference": {
+    "uniform": 0.0,
+    "always_rock": 2.220446049250313e-16,
+    "freq_w20": 0.029236039959837704,
+    "freq_w50": 0.07116324367639187,
+    "freq_all": 0.02762835099341533
+  },
+  "sigma_ref": 0.07116324367639187,
+  "inflation": 1.0,
+  "sesoi": 0.02,
+  "N": 400,
+  "underpowered": false,
+  "required_n_per_agent": 265.0888163252096,
+  "seeds": {
+    "M_selection": [
+      50000,
+      50099
+    ],
+    "T_w": [
+      50100,
+      50199
+    ]
+  },
+  "note": "reference agents only; the three frozen agents were not run"
+}

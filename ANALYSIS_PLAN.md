@@ -857,3 +857,27 @@ analysis in this environment would start from a structural null.
    and records the commit hash. It runs once on seeds 60000+.
 5. The results are committed unedited, and every outcome is reported,
    including H1 failing and any "inconclusive".
+
+## Study 3 calibration: result (2026-09-28)
+
+`results/study3/calibration.json`. Reference agents only. The code was
+committed (`73706d7`) before the run.
+
+- **M = 5.** The first value tried separates every pair of reference
+  agents by more than 2 SE. Their scores on [300, 1000): uniform 0.000,
+  always-rock −0.900, 20-move counter −0.476, 50-move counter −0.448,
+  full-history counter −0.241.
+- **T_w = 858.** Per reference: uniform 0, always-rock 49, 20-move counter
+  285, 50-move counter 637, full-history counter 858. T_w > 700, so the
+  episode is extended to **1,158 rounds** and the score window is
+  [858, 1158).
+- **N = 400** per agent: σ_ref = 0.071 and inflation 1 give a required n of
+  about 265, which rounds up the grid to 400.
+
+**Caveat, recorded before any frozen-agent run.** T_w is set entirely by
+the full-history counter. Against a reactive opponent its play keeps
+drifting, so its trailing mean reaches the band only late in the
+calibration window. The rule takes the maximum over the references, so this
+one slow reference moves every agent's score window to the last 300 rounds.
+It is applied as written. The effect is a later, shorter scoring window,
+which is conservative, not a bias.
