@@ -381,7 +381,16 @@ def run_structural_null() -> None:
     res["share_negative_among_nonzero"] = frac_neg
     res["verdict"] = verdict
     print("verdict:", verdict)
-    save("structural_null_layer2", res)
+    lags = dict(layer1_corrected=l1, layer2_corrected=corrected, layer2_raw=raw)
+    path = OUT / "structural_null_layer2.json"
+    if path.exists():  # rerun for the per-seed lags: must reproduce the committed summaries
+        committed = json.loads(path.read_text())
+        assert all(committed[k] == res[k] for k in ("layer1_corrected_reference", "layer2_corrected", "layer2_raw")), \
+            "rerun does not reproduce the committed structural-null summaries"
+        print("rerun reproduces the committed summaries")
+    else:
+        save("structural_null_layer2", res)
+    save("structural_null_layer2_lags", lags)
 
 
 def main() -> None:

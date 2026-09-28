@@ -488,3 +488,16 @@ about representational timing." The pre-registered outcome and the results
 file are unchanged. This note governs how they are reported. The robustness
 checks establish a property of the displacement curves, not of
 representational timing. The proposal's early-warning question remains open.
+
+**Clarification of the verdict (2026-09-28): the endpoint convention.** The
+rule's "CI overlapping [−3, −2]" did not specify whether intervals that
+touch at an endpoint overlap. The analysis code treats intervals as closed
+(`lo <= -2 and hi >= -3`), so touching counts. That code was written before
+the run but committed together with the result, so the record cannot show
+the ordering. Under an open-interval reading, the result is
+**intermediate** ("partly explained by curve shape"), because the
+"meaningfully different" condition also fails (median −2.0 is not above
+−1.0, and 89% of seeds are negative). The verdict is therefore reported as
+on the boundary between "comparable" and "intermediate". Under either
+reading, the lag does not support a representational-timing claim. Future
+rules on integer-valued lags must state their endpoint convention.

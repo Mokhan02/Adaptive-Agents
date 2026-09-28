@@ -65,14 +65,25 @@ interpretation rule fixed beforehand ([ANALYSIS_PLAN.md](ANALYSIS_PLAN.md),
 | **Layer 2, corrected (no information lag possible)** | **−2.0 [−2, −1]** | **89 / 100** |
 | Layer 2, raw | +2.0 [0, 5] | 25 of 82 nonzero |
 
-By the pre-registered rule, this counts as **comparable**: the median is in
-[−3.5, −1.5], at least 80% of seeds are negative, and the CIs overlap. The
-CIs only just overlap, touching at −2, and layer 2's lag is about half a
-round smaller. Layer 2 also reproduces the sign flip without the correction.
+**The verdict, from the rule fixed before the check ran (commit
+`3aec7ef`; results in `68a2ea2`), is on a boundary.** The rule counts the
+result as "comparable" if the median is in [−3.5, −1.5] (it is: −2.0), at
+least 80% of nonzero seeds are negative (89%), and the CI overlaps study 1's
+[−3, −2]. The CIs touch only at −2. The rule didn't say whether touching
+counts as overlap:
+- **Closed intervals** (the analysis code's reading, written before the
+  run but committed with the result): **comparable**.
+- **Open intervals:** **intermediate** ("partly explained by curve shape").
+  The "meaningfully different" condition fails either way.
+
+Either way, a layer with no possible information lag shows 2.0 of layer 1's
+2.5 rounds. Layer 2 also reproduces the sign flip without the correction.
 
 **The reframed reading:** residual-stream displacement peaks after output
 displacement, a pattern also present at a layer with no possible information
 lag. It therefore does not support a claim about representational timing.
+At most about half a round could be specific to layer 1, and that difference
+has not been tested.
 The likely mechanism is that a 64-dimensional residual's displacement is
 dominated by directions the output never reads, which rise and settle on
 their own schedule. The small early bump in the overlay above is a
@@ -109,7 +120,7 @@ doesn't produce a negative lag on its own, and they are not confirmations.
 
 ### The sign depends on the latest-move correction, at both layers
 
-![Per-seed lags, corrected vs raw](figures/3_lag_histograms.png)
+![Per-seed lags: layer 1 vs the layer-2 structural null, corrected and raw](figures/3_lag_histograms.png)
 
 Without the correction, the raw layer-1 state *leads*: median +4.5 rounds,
 95% CI [2, 7], with 64 of 89 nonzero seeds positive. At the final position,

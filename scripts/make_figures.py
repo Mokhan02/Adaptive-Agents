@@ -28,6 +28,9 @@ OUT = Path("figures")
 AGENT_COLOR = {"in_context": "#2a78d6", "change_aware": "#eb6834", "fine_tune": "#1baf7a"}
 AGENT_LABEL = {"in_context": "In-context", "change_aware": "Change-aware RL", "fine_tune": "Fine-tuning"}
 SIGNAL_COLOR = {"state": "#4a3aa7", "output": "#e34948"}  # slots 7 and 8: not agent identities
+# Layer identity in the lag figures: layer 1 = the in-context blue, layer 2 (structural null) = slot 5
+# magenta (below 3:1 on light, so every mark carries a visible label). Corrected = filled, raw = hollow.
+LAYER_COLOR = {1: "#2a78d6", 2: "#e87ba4"}
 INK, INK_2, GRID, SURFACE = "#0b0b0b", "#52514e", "#e4e3df", "#fcfcfb"
 
 plt.rcParams.update({
@@ -108,24 +111,37 @@ def fig_overlay(ic_logs: list, cal) -> None:
 
 def fig_lags(conf: dict) -> None:
     ic = conf["agents"]["in_context"]
-    panels = [("Corrected state (pre-registered)", ic["test_b"]),
-              ("Raw state — exploratory", ic["exploratory_raw_state_lag"])]
-    lo = min(min(p["lags"]) for _, p in panels)
-    hi = max(max(p["lags"]) for _, p in panels)
-    fig, axes = plt.subplots(1, 2, figsize=(9, 3.6), sharey=True)
-    for ax, (title, res) in zip(axes, panels):
-        lags = np.array(res["lags"])
-        bins = np.arange(lo - 0.5, hi + 1.5)
-        ax.hist(lags, bins=bins, color=AGENT_COLOR["in_context"], edgecolor=SURFACE, linewidth=1)
-        c_lo, c_hi = res["median_ci95"]
-        ax.axvspan(c_lo, c_hi, color=INK_2, alpha=0.12, linewidth=0)
-        ax.axvline(res["median_lag"], color=INK, linewidth=1.5)
-        ax.axvline(0, color=INK_2, linewidth=1, linestyle=":")
-        ax.set(title=title, xlabel="lag (rounds; + = state moves first)")
-        ax.text(0.02, 0.95, f"median {res['median_lag']:+g}  [{c_lo:g}, {c_hi:g}]\n"
-                f"{res['n_positive']} + / {res['n_negative']} − / {res['n_zero']} zero",
-                transform=ax.transAxes, va="top", fontsize=9, color=INK_2)
-    axes[0].set_ylabel("seeds")
+    l2 = load("results/exploratory/structural_null_layer2_lags.json")
+    l2s = load("results/exploratory/structural_null_layer2.json")
+    assert l2["layer1_corrected"] == ic["test_b"]["lags"]
+    rows = [
+        (1, "Layer 1 (tested)", [("corrected (pre-registered)", ic["test_b"]), ("raw — exploratory", ic["exploratory_raw_state_lag"])]),
+        (2, "Layer 2 (structural null)",
+         [("corrected", dict(l2s["layer2_corrected"], lags=l2["layer2_corrected"])),
+          ("raw", dict(l2s["layer2_raw"], lags=l2["layer2_raw"]))]),
+    ]
+    all_lags = [x for _, _, panels in rows for _, r in panels for x in r["lags"]]
+    bins = np.arange(min(all_lags) - 0.5, max(all_lags) + 1.5)
+    fig, axes = plt.subplots(2, 2, figsize=(9.5, 6.2), sharex=True, sharey=True)
+    for (layer, row_title, panels), row_axes in zip(rows, axes):
+        color = LAYER_COLOR[layer]
+        for j, (ax, (label, res)) in enumerate(zip(row_axes, panels)):
+            raw = j == 1
+            ax.hist(res["lags"], bins=bins, color=SURFACE if raw else color, edgecolor=color, linewidth=1)
+            c_lo, c_hi = res["median_ci95"]
+            ax.axvspan(c_lo, c_hi, color=INK_2, alpha=0.12, linewidth=0)
+            ax.axvline(res["median_lag"], color=INK, linewidth=1.5)
+            ax.axvline(0, color=INK_2, linewidth=1, linestyle=":")
+            ax.set_title(f"{row_title}: {label}", fontsize=10)
+            ax.text(0.02, 0.95, f"median {res['median_lag']:+g}  [{c_lo:g}, {c_hi:g}]\n"
+                    f"{res['n_positive']} + / {res['n_negative']} − / {res['n_zero']} zero",
+                    transform=ax.transAxes, va="top", fontsize=9, color=INK_2)
+        row_axes[0].set_ylabel("seeds")
+    for ax in axes[1]:
+        ax.set_xlabel("lag (rounds; + = state moves first)")
+    fig.suptitle("Per-seed lags against the output: layer 1 vs layer 2, a structural null (no information lag possible)",
+                 fontweight="semibold", color=INK, fontsize=11)
+    fig.tight_layout()
     savefig(fig, "3_lag_histograms.png")
 
 
@@ -133,22 +149,27 @@ def fig_robustness(conf: dict) -> None:
     ic = conf["agents"]["in_context"]
     ex = load("results/exploratory/2_4_5_in_context.json")
     un = load("results/exploratory/3_untrained.json")
+    l2 = load("results/exploratory/structural_null_layer2.json")
+    # (label, result, layer color or None for gray, hollow marker for raw)
     rows = [
-        ("Confirmatory: corrected state, h = 14", ic["test_b"]),
-        ("Behavior = logits (no saturation)", ex["2_logit_behavior"]),
-        ("h = 7", ex["4_h7"]),
-        ("h = 28", ex["4_h28"]),
-        ("Onset difference (threshold-based)", ex["5_onset"]),
-        ("Raw state (no latest-move correction)", ic["exploratory_raw_state_lag"]),
-        ("Untrained network, corrected state", un["3_untrained_corrected"]),
+        ("Layer 1, corrected (confirmatory)", ic["test_b"], LAYER_COLOR[1], False),
+        ("Layer 2, corrected — structural null", l2["layer2_corrected"], LAYER_COLOR[2], False),
+        ("Layer 1, raw", ic["exploratory_raw_state_lag"], LAYER_COLOR[1], True),
+        ("Layer 2, raw — structural null", l2["layer2_raw"], LAYER_COLOR[2], True),
+        ("Behavior = logits (no saturation)", ex["2_logit_behavior"], None, False),
+        ("h = 7", ex["4_h7"], None, False),
+        ("h = 28", ex["4_h28"], None, False),
+        ("Onset difference (threshold-based)", ex["5_onset"], None, False),
+        ("Untrained network, corrected state", un["3_untrained_corrected"], None, False),
     ]
-    fig, ax = plt.subplots(figsize=(8, 3.8))
-    for i, (label, r) in enumerate(rows):
+    fig, ax = plt.subplots(figsize=(8.5, 4.8))
+    for i, (label, r, color, hollow) in enumerate(rows):
         y = len(rows) - 1 - i
         lo, hi = r["median_ci95"]
-        color = AGENT_COLOR["in_context"] if i == 0 else INK_2
-        ax.plot([lo, hi], [y, y], color=color, linewidth=2, solid_capstyle="round")
-        ax.plot(r["median_lag"], y, "o", color=color, markersize=8, markeredgecolor=SURFACE, markeredgewidth=2)
+        c = color or INK_2
+        ax.plot([lo, hi], [y, y], color=c, linewidth=2, solid_capstyle="round")
+        ax.plot(r["median_lag"], y, "o", markersize=8, color=c, markerfacecolor=SURFACE if hollow else c,
+                markeredgecolor=c if hollow else SURFACE, markeredgewidth=2)
         n_nz = r["n_positive"] + r["n_negative"]
         if not n_nz:
             note = "all zero"
@@ -157,10 +178,11 @@ def fig_robustness(conf: dict) -> None:
         else:
             note = f"{r['n_negative']}/{n_nz} negative"
         ax.text(max(hi, r["median_lag"]) + 0.6, y, note, va="center", fontsize=8.5, color=INK_2)
+    ax.axhline(len(rows) - 4.5, color=GRID, linewidth=1)
     ax.axvline(0, color=INK_2, linewidth=1, linestyle=":")
     ax.set_yticks(range(len(rows)), [r[0] for r in rows][::-1])
     ax.set(xlabel="median lag, 95% CI (rounds; + = state moves first)",
-           title="In-context lag across checks — first row confirmatory, the rest exploratory")
+           title="Lag against the output — layer 2 is a structural null; all rows but the first are exploratory")
     ax.set_xlim(-7, 11)
     savefig(fig, "4_robustness.png")
 
