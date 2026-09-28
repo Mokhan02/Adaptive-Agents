@@ -19,7 +19,7 @@ cd Adaptive-Agents
 git pull --ff-only
 
 python3 -c "import torch; assert torch.cuda.is_available(), 'no CUDA'; print('torch', torch.__version__, torch.cuda.get_device_name(0))"
-python3 -m pip install --user -q "numpy>=1.24" "matplotlib>=3.7" pytest
+python3 -m pip install --user -q "numpy>=1.25,<2" "matplotlib>=3.7" pytest  # spawn needs 1.25; prebuilt torch needs <2
 python3 -m pytest -q tests/test_in_context.py tests/test_pretrain.py
 echo "vCPUs: $(nproc)"
 echo "Ready. Start the sweep in tmux (see the top of this script)."
