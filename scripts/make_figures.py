@@ -214,6 +214,34 @@ def fig_ranking(conf: dict) -> None:
     savefig(fig, "5_ranking.png")
 
 
+def fig_structural_nulls() -> None:
+    """How the measurement artifact was caught: the lag appears in almost every residual direction."""
+    dim = load("results/exploratory/dimension_diagnostics.json")["d2"]["by_k"]
+    null = load("results/exploratory/structural_null_layer2.json")
+    ln = load("results/exploratory/layernorm_diagnostic.json")
+    ks = [int(k) for k in dim]
+    fig, ax = plt.subplots(figsize=(8.5, 4.2))
+    rng = np.random.default_rng(0)
+    for i, k in enumerate(ks):
+        meds = np.array(dim[str(k)]["median_lags"])
+        x = i + rng.uniform(-0.12, 0.12, len(meds))
+        ax.plot(x, meds, "o", markersize=6, color=INK_2, alpha=0.55, markeredgewidth=0)
+    refs = [("Layer 1, corrected (study 1)", null["layer1_corrected_reference"]["median_lag"], LAYER_COLOR[1], "-"),
+            ("Layer 2, corrected (structural null)", null["layer2_corrected"]["median_lag"], LAYER_COLOR[2], "-"),
+            ("Layer 1, LayerNorm-normalized", ln["layer1_layernorm"]["median_lag"], LAYER_COLOR[1], "--"),
+            ("Layer 2, LayerNorm-normalized", ln["layer2_layernorm"]["median_lag"], LAYER_COLOR[2], "--")]
+    for label, y, color, style in refs:
+        ax.axhline(y, color=color, linewidth=1.5, linestyle=style, label=f"{label}: {y:+g}")
+    ax.axhline(0, color=INK_2, linewidth=1, linestyle=":")
+    ax.set_xticks(range(len(ks)), [str(k) for k in ks])
+    ax.set(xlabel="dimension k of a random orthonormal projection of the layer-1 state (20 projections each)",
+           ylabel="median lag vs output (rounds)",
+           title="Structural nulls — the lag appears in almost every residual direction (exploratory)")
+    ax.set_ylim(-11.5, 11.5)
+    ax.legend(loc="upper right", fontsize=8.5)
+    savefig(fig, "6_structural_nulls.png")
+
+
 def main() -> None:
     conf = load("results/confirmatory/results.json")
     logs = {a: run_many(a, "switch", ANALYSIS_SWITCH_SEEDS, 200, 600) for a in AGENTS}
@@ -229,6 +257,7 @@ def main() -> None:
     fig_lags(conf)
     fig_robustness(conf)
     fig_ranking(conf)
+    fig_structural_nulls()
 
 
 if __name__ == "__main__":

@@ -28,6 +28,42 @@ committed unedited.
 
 ## Results
 
+### Summary of findings
+
+1. **Adaptation: no single best adapter, and two claims retracted.** The
+   pre-registered ranking (excess regret) puts the change-aware RL agent
+   first. Total regret puts the in-context agent first by a factor of 4–5.
+   RL's win comes from subtracting its own loose baseline, and the test
+   pair happens to favor it. The claim that holding the test strategies out
+   of pretraining affected performance was refuted by a control.
+   [Details](#two-claims-retracted-after-checking).
+2. **Early warning: open.** We set out to ask whether the agent's internal
+   state gives notice of a regime switch before its behavior changes. The
+   pre-registered lag (the state's displacement peaks 2.5 rounds after the
+   output's) turned out to be a property of the measurement, not of
+   representational timing (next item). A practical early-warning detector
+   (detection delay at a matched 5% false-alarm rate) was designed for a
+   follow-up study and found infeasible for this probe *before* it ran: it
+   was unpowered, and biased under a planted null. So the question is
+   neither answered yes nor answered no. [Study 2](#study-2-early-detection-designed-not-run).
+3. **Methods: displacement-timing comparisons need a structural null.**
+   Comparing when a residual-stream vector's displacement peaks with when the
+   output's does produces a robust lag of about 2 rounds, even at a layer
+   that determines the output in the same round, where no information lag is
+   possible. It appears in random projections of every size from 4 to 64
+   dimensions, and it survives LayerNorm normalization. Its mechanism is
+   unresolved. What transfers is how it was caught: a structural null (a
+   signal with a known zero lag, run through the identical pipeline), a
+   validity condition on any fitted readout (one fitted on the training
+   distribution did not transfer to the test pair, R² −0.02), and a
+   dimension sweep. [Details](#structural-null-check-the-lag-is-a-property-of-the-measurement).
+
+Every interpretation rule was fixed before its data existed. One verdict
+landed exactly on an ambiguous endpoint of such a rule and is reported as
+"on the boundary" rather than resolved after the fact. See the standing
+conventions in [ANALYSIS_PLAN.md](ANALYSIS_PLAN.md).
+
+
 > **Reframed (2026-09-28).** The pre-registered outcome below,
 > "representation lags behavior", stays on record as it came out. A
 > structural-null check has since shown that the lag doesn't support a claim
@@ -106,6 +142,8 @@ displacement curves, and robust to how they're measured. What is withdrawn
 is the interpretation that they say *when* the representation changes. The
 proposal's early-warning question is open. Answering it needs a method that
 compares the state against a structural null like layer 2, not against zero.
+
+![Structural nulls: random projections, layer 2 and LayerNorm](figures/6_structural_nulls.png)
 
 ### Robust to analysis choices, not replicated
 
@@ -194,6 +232,25 @@ switch comes after warm-up (round 941), 37 of 100 runs never recover.
 
 ![Regret around the switch](figures/1_regret_curves.png)
 
+### Study 2 (early detection): designed, not run
+
+A follow-up study was designed to test first response directly, with its
+own pre-registration ([PREREG_EARLY_DETECTION.md](PREREG_EARLY_DETECTION.md),
+not frozen). It never reached its fresh test seeds:
+- **The operational test** was detection delay at a matched 5% per-run
+  false-alarm rate. Planted-signal power simulations found it unpowered
+  (41% inconclusive even at 3,200 seeds) and biased toward "state first"
+  under a planted null (19% at 3,200 seeds). The bias came from the rule
+  that a signal that never fires counts as later, combined with the two
+  signals' unequal detection rates. The state's response is 0.13 [0.10,
+  0.15] of its threshold, against the output's 0.33 [0.26, 0.41].
+- **Its replacement** compared normalized timing of the mean curves. It
+  needed smoothing, a sustained-crossing rule and a cross-fitted peak to be
+  unbiased in planted tests. Its dry run then showed the layer-2 negative
+  control far from 0, which led to the structural-null finding above.
+  Study 2 is on hold. A redesign would have to compare the state against a
+  structural null rather than against zero.
+
 ## How it was done
 
 1. **Pre-registration.** Hypotheses, tests and the outcome mapping were
@@ -223,7 +280,9 @@ python scripts/pretrain_icl.py --run-dir runs/icl # or scripts/tune_icl.py for t
 python scripts/tune.py --agent change_aware       # CPU sweeps
 python scripts/calibrate.py --agent in_context
 python scripts/confirmatory.py --dry-run          # pipeline check on a non-test pair
-python scripts/exploratory.py icl                 # follow-ups; see the script for the others
+python scripts/exploratory.py icl                 # follow-ups: saturation, icl, untrained, remaining,
+python scripts/exploratory.py structural-null     #   structural-null, dimension, layernorm
+python scripts/early_detection.py timing-power    # study 2 design (power, diagnose, bias, strengths, run --dry-run)
 python scripts/make_figures.py
 ```
 
