@@ -159,3 +159,46 @@ agent also returns a non-None `internal_state()`.
   untrained network detects 39% of pretraining-style switches (chance 5%).
   The caveat stands: any function of the move window responds to the switch
   to some degree. Details are in AGENT_SPECS.md.
+- **2026-09-27, calibration and analysis rules, fixed before any calibration
+  run.** These fill gaps in the sections above; nothing above is reversed.
+  - **Seeds.** Calibration: switch runs 10000–10099, controls 10100–10199.
+    Analysis: switch runs 0–99, controls 1000–1099. Controls use seeds
+    disjoint from switch runs, so the two groups in Test A are independent.
+  - **Recovery time** is `metrics.recovery_time` with its defaults (20-round
+    window, 90% threshold, sustained 20 rounds, 50-round baseline).
+  - **Censoring.** A run that does not recover by the end of the episode,
+    or has no pre-switch edge (so recovery is undefined), is *censored*. It
+    counts as longer than every observed recovery time when taking the
+    median and 90th percentile. If the 90th percentile is censored (more
+    than 10% of calibration runs censored), W is undefined, and that agent's
+    Tests A and B are **not runnable**. This is reported as such, not as a
+    null. The agent still appears in the adaptation ranking, with its
+    censored count reported.
+  - **T_w (clarified).** "Within 10% of its final level" is ill-posed when
+    the final level is near zero. T_w is the first round after which the
+    across-seed mean of 20-round windowed regret in calibration controls,
+    m(t), stays within 0.1 · |m(0) − m_final| of m_final, where m_final is
+    the mean over the last 100 rounds.
+  - **Window floor.** W = max(2 · p90 recovery, 3h). An agent that recovers
+    almost instantly would otherwise get W ≈ 0. A displacement at horizon h
+    responds over about h rounds, so the window must span a few h. L = ⌊W/2⌋
+    as before.
+  - **Episode length.** switch_at = max(200, T_w + h + W) and
+    n_rounds = max(600, switch_at + W + 1), so the whole analysis window
+    lies inside the episode and after warm-up. Both are recorded per agent
+    in the calibration output.
+  - **Standardization.** Per-dimension mean and standard deviation of the
+    state, pooled over calibration control runs and rounds [T_w, switch_at).
+    Dimensions with zero variance are left unscaled. Behavior (output
+    scores) is centered across actions only.
+  - **Lag ties.** The argmax lag with the smallest |k| wins. A tie between
+    +k and −k is recorded as 0, meaning no direction.
+  - **Lag convention, precisely:** the lag is the k maximizing
+    corr(D_s(t), D_o(t + k)). If the state's displacement rises k rounds
+    before the behavior's, the peak is at +k. This convention is tested on
+    planted signals (`tests/test_analysis.py`).
+  - **One confirmatory run.** Calibration outputs and the analysis code are
+    committed and tagged before seeds 0–99 run. The results file records the
+    commit hash. Any later fix goes in an amendment with its reason.
+  - **Calibration never computes Tests A or B.** It only derives T_w, h, W,
+    L, the standardization statistics and the episode length.
