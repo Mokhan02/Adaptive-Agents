@@ -67,7 +67,7 @@ def save_model(model: MoveTransformer, path) -> None:
 
 
 def load_model(path) -> MoveTransformer:
-    ckpt = torch.load(path, map_location="cpu")
+    ckpt = torch.load(path, map_location="cpu", weights_only=False)  # our own files; torch>=2.6 defaults to True
     if "model" in ckpt:  # a training checkpoint rather than an exported model
         ckpt = ckpt["model"]
     model = MoveTransformer(ModelConfig(**ckpt["config"]))

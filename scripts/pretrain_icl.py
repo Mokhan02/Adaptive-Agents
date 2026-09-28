@@ -67,13 +67,14 @@ def main() -> None:
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=0.01)
     sched = torch.optim.lr_scheduler.LambdaLR(
         opt,
-        lambda s: min(1.0, (s + 1) / args.warmup) * 0.5 * (1 + np.cos(np.pi * min(1.0, s / args.steps))),
+        # float(): keep numpy scalars out of the scheduler state, so checkpoints load under weights_only=True
+        lambda s: float(min(1.0, (s + 1) / args.warmup) * 0.5 * (1 + np.cos(np.pi * min(1.0, s / args.steps)))),
     )
     step, best_val = 0, float("inf")
 
     latest = args.run_dir / "latest.pt"
     if latest.exists():
-        ck = torch.load(latest, map_location="cpu")
+        ck = torch.load(latest, map_location="cpu", weights_only=False)  # our own file; torch>=2.6 defaults to True
         if ck["args"]["steps"] != args.steps or ck["args"]["lr"] != args.lr:
             raise SystemExit("run dir was started with different --steps/--lr; use a new --run-dir")
         model.load_state_dict(ck["model"]["state_dict"])

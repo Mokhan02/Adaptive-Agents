@@ -38,7 +38,7 @@ def main() -> None:
     best = min(log, key=lambda r: r["val_ce"])
     model = load_model(args.run_dir / "best.pt")
     offsets = estimate_move_offsets(model)
-    train_threads = torch.load(args.run_dir / "latest.pt", map_location="cpu")["args"]["threads"] or "default"
+    train_threads = torch.load(args.run_dir / "latest.pt", map_location="cpu", weights_only=False)["args"]["threads"] or "default"
     meta = dict(
         step=best["step"],
         val_ce=best["val_ce"],
