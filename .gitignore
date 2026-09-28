@@ -8,5 +8,6 @@ results/*
 !results/calibration/
 !results/confirmatory/
 !results/early_detection/
+!results/study3/
 .DS_Store
 runs/

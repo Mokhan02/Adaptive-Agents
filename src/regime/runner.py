@@ -39,6 +39,8 @@ def run_episode(
     rng = np.random.default_rng(seed)
     agent_rng, opp_rng = rng.spawn(2)
     agent.reset(agent_rng)
+    if hasattr(opponent, "reset"):  # reactive opponents carry per-episode state
+        opponent.reset()
 
     agent_actions = np.empty(n_rounds, dtype=int)
     opp_actions = np.empty(n_rounds, dtype=int)
@@ -57,6 +59,8 @@ def run_episode(
         r = PAYOFF[a, b]
 
         agent.observe(a, b, r)
+        if hasattr(opponent, "observe_agent"):  # a reactive opponent sees the agent's move, no lag
+            opponent.observe_agent(a)
 
         agent_actions[t], opp_actions[t], rewards[t] = a, b, r
         expected[t] = float(pi @ expected_payoffs(opp_dist))

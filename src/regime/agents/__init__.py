@@ -1,4 +1,4 @@
 from regime.agents.base import Agent
-from regime.agents.baselines import FrequencyAgent, UniformAgent
+from regime.agents.baselines import ConstantAgent, FrequencyAgent, UniformAgent
 
-__all__ = ["Agent", "FrequencyAgent", "UniformAgent"]
+__all__ = ["Agent", "ConstantAgent", "FrequencyAgent", "UniformAgent"]

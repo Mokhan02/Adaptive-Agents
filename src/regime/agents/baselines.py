@@ -30,6 +30,23 @@ class UniformAgent(Agent):
         return np.zeros(N_ACTIONS)
 
 
+class ConstantAgent(Agent):
+    """Always plays the same move: maximally exploitable (a study 3 reference)."""
+
+    def __init__(self, action: int = 0):
+        self.action = action
+        self.name = f"always_{action}"
+
+    def policy(self) -> np.ndarray:
+        return np.eye(N_ACTIONS)[self.action]
+
+    def observe(self, my_action: int, opp_action: int, reward: float) -> None:
+        pass
+
+    def output_scores(self) -> np.ndarray:
+        return np.eye(N_ACTIONS)[self.action]
+
+
 class FrequencyAgent(Agent):
     """Best-responds to the empirical opponent distribution.
 

@@ -1,0 +1,70 @@
+"""Study 3's fictitious-play opponent. These tests double as its specification."""
+
+import numpy as np
+import pytest
+
+from regime.agents import ConstantAgent, FrequencyAgent, UniformAgent
+from regime.env import PAPER, ROCK, SCISSORS, FictitiousPlayOpponent
+from regime.runner import run_episode
+
+
+def test_always_rock_earns_exactly_minus_0_9_once_window_is_full():
+    # eps-exploration is uniform over all three moves: 0.9 * (-1) + 0.1 * 0 = -0.9
+    log = run_episode(ConstantAgent(ROCK), FictitiousPlayOpponent(window=20, eps=0.1), 200, seed=0)
+    np.testing.assert_allclose(log.expected_rewards[:20], 0.0)  # uniform before M moves are seen
+    np.testing.assert_allclose(log.expected_rewards[20:], -0.9)
+
+
+def test_uniform_play_earns_exactly_zero():
+    log = run_episode(UniformAgent(), FictitiousPlayOpponent(window=10, eps=0.1), 300, seed=1)
+    np.testing.assert_allclose(log.expected_rewards, 0.0, atol=1e-12)
+
+
+def test_ties_are_uniform_over_tied_best_responses():
+    opp = FictitiousPlayOpponent(window=3, eps=0.0)
+    for a in (ROCK, PAPER, SCISSORS):  # uniform history: every action ties at value 0
+        opp.observe_agent(a)
+    np.testing.assert_allclose(opp.distribution(3), [1 / 3] * 3)
+    opp = FictitiousPlayOpponent(window=2, eps=0.0)
+    opp.observe_agent(ROCK)
+    opp.observe_agent(PAPER)  # p = (.5, .5, 0): paper (0.5) beats scissors (0) and rock (-0.5)
+    np.testing.assert_allclose(opp.distribution(2), [0, 1, 0])
+
+
+def test_best_response_uses_only_the_last_M_moves():
+    opp = FictitiousPlayOpponent(window=3, eps=0.0)
+    for a in [ROCK] * 10 + [SCISSORS] * 3:
+        opp.observe_agent(a)
+    np.testing.assert_allclose(opp.distribution(13), np.eye(3)[ROCK])  # rock beats scissors
+
+
+def test_opponent_state_resets_between_episodes():
+    opp = FictitiousPlayOpponent(window=5, eps=0.1)
+    run_episode(ConstantAgent(ROCK), opp, 50, seed=0)
+    log = run_episode(ConstantAgent(ROCK), opp, 50, seed=0)
+    np.testing.assert_allclose(log.expected_rewards[:5], 0.0)
+
+
+def test_scripted_opponents_are_unaffected_by_the_hook():
+    from regime.env import STRATEGY_A, STRATEGY_B, RegimeSwitchOpponent
+
+    log = run_episode(FrequencyAgent(window=20), RegimeSwitchOpponent(STRATEGY_A, STRATEGY_B), 100, seed=3)
+    assert log.expected_rewards.shape == (100,)
+
+
+def test_rejects_bad_parameters():
+    with pytest.raises(ValueError):
+        FictitiousPlayOpponent(window=0)
+
+
+def test_study3_rule_helpers():
+    from regime.study3 import cycle_period, separated, settle_round, trailing_entropy
+
+    assert separated({"a": 0.0, "b": 0.1}, {"a": 0.01, "b": 0.01})
+    assert not separated({"a": 0.0, "b": 0.02}, {"a": 0.01, "b": 0.01})  # 0.02 < 2 * 0.0141
+    m = np.concatenate([np.linspace(-0.5, -0.1, 100), np.full(900, -0.1)])
+    assert 90 <= settle_round(m) <= 100
+    assert settle_round(np.zeros(1000)) == 0  # the absolute floor handles a zero band
+    np.testing.assert_allclose(trailing_entropy(np.array([0, 1, 2] * 10), 3)[2:], np.log(3))
+    assert cycle_period(np.array([0, 1, 2] * 100)) == 3
+    assert cycle_period(np.zeros(300, dtype=int)) is None

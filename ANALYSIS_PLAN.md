@@ -514,6 +514,11 @@ rules on integer-valued lags must state their endpoint convention.
    visible. Making them visible *in advance* is this convention's job.
 2. **Commit rule-implementing code before the run it governs,** separately
    from the results, so the record shows the order.
+3. **Give relative tolerance bands an absolute floor.** A band defined as
+   a fraction of a level that can be near zero (for example, 10% of a
+   final regret or reward) is ill-posed there. Study 1's T_w rule hit this
+   for the RL agent (see the band-edge note). New rules use
+   max(relative band, absolute floor).
 
 ## Dimension diagnostics (2026-09-28, defined before running)
 
@@ -668,6 +673,8 @@ Per the stop rule, no further mechanism diagnostics are run.
 
 # Study 3: a reactive opponent (draft, 2026-09-28; frozen at tag `study3-v1`)
 
+_Draft revision 2026-09-28, before any code or run: the power rule now carries a variance inflation factor and a justification for its SESOI, and the M-selection window's start is explained._
+
 Studies 1–2 used a scripted opponent: nonstationary, but not competitive,
 since it never reacted to the agent. Study 3 replaces it with an opponent
 that best-responds to the agent's own recent play (fictitious play). This
@@ -738,7 +745,11 @@ baselines).
 
 1. **Choose M.** For each M ∈ {5, 10, 20, 50}, in that order, run every
    reference agent on 100 seeds (50000–50099). Score each run by its mean
-   expected reward over the fixed window [300, 1000). M is **the smallest M
+   expected reward over the fixed window [300, 1000). The window starts at
+   300 to stay conservatively past any plausible warm-up for the reference
+   agents, whose slowest settling in study 0 was about 110 rounds (the
+   full-history counter). Fixing it independently of T_w avoids circularity,
+   since T_w depends on M. M is **the smallest M
    at which every pair of reference agents is separated by more than 2 SE**
    (strict >), where SE is the standard error of the difference in means.
    If no M qualifies, use M = 20, and record that the rule failed.
@@ -752,12 +763,24 @@ baselines).
    maximum over reference agents.** If T_w > 700, the episode length is
    extended so that at least 300 rounds follow it.
 3. **Power and seed count.** From the calibration runs at the chosen M,
-   take the largest per-seed SD of the score across the reference agents.
-   N per agent is the smallest of {100, 200, 400, 800} giving at least 80%
-   power for a two-sided two-sample comparison at α = 0.05/3 (Holm's
-   strictest step) against a difference of **0.02 reward per round** (the
-   effect of interest, SESOI). If none qualifies, N = 800, declared
-   underpowered.
+   take σ_ref, the **largest** per-seed SD of the score across the reference
+   agents. Multiply it by k = max(1, 0.99) = 1. Here k is a variance
+   inflation factor from study 1's public data: the most variable frozen
+   agent's per-seed SD of total regret (fine-tuning, 22.9) divided by the
+   most variable reference agent's under the same scripted runs (full-history
+   counter, 23.2). This guards against the frozen agents being more variable
+   than the references. In study 1 they weren't, but that estimate comes
+   from the scripted environment. N per agent is the smallest of
+   {100, 200, 400, 800} giving at least 80% power (normal approximation,
+   two-sided, two-sample) at α = 0.05/3 (Holm's strictest step) for a
+   difference of **0.02 reward per round**. If none qualifies, N = 800,
+   declared underpowered. The run also reports the *achieved* power from the
+   observed SDs; N is not changed after the fact.
+   - **Why 0.02 (SESOI).** In study 1 the frozen agents' pairwise
+     total-regret gaps were 0.147 (in-context vs RL) and 0.045 (RL vs
+     fine-tuning) per round. So 0.02 is under half the smallest gap they
+     showed: a difference smaller than that would be negligible next to how
+     these agents differed before.
 
 ## Hypotheses and tests (test seeds 60000 to 60000 + N − 1, each agent)
 

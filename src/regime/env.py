@@ -91,3 +91,43 @@ def _as_dist(p) -> np.ndarray:
 # from paper to rock and a non-adapting agent is actively punished after the switch.
 STRATEGY_A = np.array([0.6, 0.2, 0.2])
 STRATEGY_B = np.array([0.2, 0.2, 0.6])
+
+
+class FictitiousPlayOpponent:
+    """Best-responds to the agent's own recent play (study 3; ANALYSIS_PLAN.md).
+
+    Before it has seen M agent moves it plays uniformly. After that, its mixed
+    strategy is (1 - eps) * best response to the empirical distribution of the
+    agent's last M sampled moves (uniform over tied best responses) + eps * uniform.
+    No switch: `switch_at` and `switch_end` are 0 for EpisodeLog bookkeeping.
+    """
+
+    switch_at = 0
+    switch_end = 0
+
+    def __init__(self, window: int, eps: float = 0.1):
+        if window < 1 or not 0 <= eps <= 1:
+            raise ValueError("window >= 1 and 0 <= eps <= 1")
+        self.window, self.eps = window, eps
+        self.reset()
+
+    def reset(self) -> None:
+        from collections import deque
+
+        self.history: deque[int] = deque(maxlen=self.window)
+
+    def observe_agent(self, action: int) -> None:
+        self.history.append(action)
+
+    def distribution(self, t: int) -> np.ndarray:
+        uniform = np.full(N_ACTIONS, 1 / N_ACTIONS)
+        if len(self.history) < self.window:
+            return uniform
+        p = np.bincount(np.fromiter(self.history, int), minlength=N_ACTIONS) / self.window
+        values = expected_payoffs(p)
+        best = np.isclose(values, values.max())
+        br = best / best.sum()
+        return (1 - self.eps) * br + self.eps * uniform
+
+    def act(self, t: int, rng: np.random.Generator) -> int:
+        return int(rng.choice(N_ACTIONS, p=self.distribution(t)))
