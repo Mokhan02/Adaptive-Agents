@@ -663,3 +663,174 @@ run. The next step is the write-up.
 residual's per-round magnitude does not remove the lag, so magnitude drift
 through LayerNorm is not the mechanism. **The mechanism is unresolved.**
 Per the stop rule, no further mechanism diagnostics are run.
+
+---
+
+# Study 3: a reactive opponent (draft, 2026-09-28; frozen at tag `study3-v1`)
+
+Studies 1–2 used a scripted opponent: nonstationary, but not competitive,
+since it never reacted to the agent. Study 3 replaces it with an opponent
+that best-responds to the agent's own recent play (fictitious play). This
+is the structural property the proposal's "competitive multi-agent" framing
+needs. The standing conventions above apply: every comparison states its
+endpoints, and rule-implementing code is committed before the run it
+governs.
+
+## Question and the agents' handicap
+
+**Do agents built for scripted nonstationarity transfer to an opponent that
+reacts to them?** The three agents are used **frozen**, exactly as in
+`results/tuning/winners.json` and `models/icl_frozen.pt`, with no new
+pretraining or tuning. This is a transfer test, and each agent carries a
+handicap stated here as part of the hypothesis, not as a caveat:
+- **The in-context agent** sees only the opponent's moves (AGENT_SPECS.md:
+  "the opponent does not react to the agent"). Against this opponent, the
+  agent's *own* history is what predicts the opponent, and the agent cannot
+  see it. Its pretraining never included a reactive opponent.
+- **The fine-tuning and RL agents** were tuned on scripted switches.
+- A poor result for any agent is evidence about **transfer**, not a verdict
+  on its adaptation mechanism in general.
+
+## Environment
+
+**The fictitious-play opponent** (`env.py`, `FictitiousPlayOpponent`):
+- **Before round M** (fewer than M agent moves seen): it plays uniformly at
+  random.
+- **From round M on:** it takes the empirical distribution p of the agent's
+  last M *sampled* moves. Its best response is argmax(PAYOFF · p), with
+  ties broken uniformly among the tied actions. Its mixed strategy each
+  round is (1 − ε) · (the best response, or uniform over tied best
+  responses) + ε · uniform.
+- **Observation:** no lag on either side. The opponent sees the agent's
+  move from round t before round t + 1, and the agent sees the opponent's
+  move likewise. Lag and noise are a later, separate axis. When added, the
+  lag is symmetric by default, and any asymmetry is a stated design choice.
+- **ε = 0.1.** **M** is chosen by the rule below.
+- **Episodes are 1,000 rounds with no switch.** That is the primary design,
+  (a).
+
+**Exploratory bridge condition, design (b), run only after the primary
+analysis:** the scripted opponent plays A for 200 rounds, then switches to
+the fictitious-play opponent. It is reported as exploratory and never
+pooled with the primary. It mixes "adapting to a change" with "adapting to
+a reactive opponent", which the primary design keeps apart.
+
+## Metric
+
+- **Expected reward per round:** the agent's policy against the opponent's
+  mixed strategy that round, which is well defined even though that
+  strategy depends on history. This keeps the variance reduction used
+  throughout the project.
+- **Nash value (0)** is the reference point: uniform play earns exactly 0
+  in expectation against any opponent.
+- **Oracle regret is dropped for this study.** Best-responding myopically
+  to a reactive opponent is not optimal play, so regret against it is not
+  meaningful.
+- **Per-seed score:** mean expected reward over rounds [T_w, 1000).
+- Nothing is applied retroactively to studies 1–2.
+
+## Calibration (seeds 50000–50199; reference agents only)
+
+Calibration never runs the three frozen agents, so it cannot preview the
+answer. The reference agents are: uniform (Nash), always-rock, and the
+frequency counters with windows 20 and 50 and with full history (study 0's
+baselines).
+
+1. **Choose M.** For each M ∈ {5, 10, 20, 50}, in that order, run every
+   reference agent on 100 seeds (50000–50099). Score each run by its mean
+   expected reward over the fixed window [300, 1000). M is **the smallest M
+   at which every pair of reference agents is separated by more than 2 SE**
+   (strict >), where SE is the standard error of the difference in means.
+   If no M qualifies, use M = 20, and record that the rule failed.
+2. **Warm-up T_w** at the chosen M, on seeds 50100–50199, for each
+   reference agent. Take m(t), the across-seed mean of the 50-round trailing
+   mean expected reward, and m_final, its mean over rounds [800, 1000).
+   T_w is the first round after which
+   |m(t) − m_final| ≤ max(0.1 · |m(0) − m_final|, 0.01)
+   (closed ≤) holds for every later round. The absolute floor of 0.01 keeps
+   the band well-defined when m_final is near 0. **The study's T_w is the
+   maximum over reference agents.** If T_w > 700, the episode length is
+   extended so that at least 300 rounds follow it.
+3. **Power and seed count.** From the calibration runs at the chosen M,
+   take the largest per-seed SD of the score across the reference agents.
+   N per agent is the smallest of {100, 200, 400, 800} giving at least 80%
+   power for a two-sided two-sample comparison at α = 0.05/3 (Holm's
+   strictest step) against a difference of **0.02 reward per round** (the
+   effect of interest, SESOI). If none qualifies, N = 800, declared
+   underpowered.
+
+## Hypotheses and tests (test seeds 60000 to 60000 + N − 1, each agent)
+
+**H1, directional (a mechanistic prediction on n = 3, not a statistical
+test).** The more predictable an agent's play, the more the opponent
+exploits it. Predictability is measured by **entropy**: the entropy of the
+agent's own empirical move distribution over the trailing M rounds,
+averaged over rounds [T_w, 1000) and seeds, the same window the opponent
+conditions on.
+- **Prediction:** the ordering of the three agents by entropy equals their
+  ordering by score (Spearman over 3 agents = +1). Specifically, **the
+  in-context agent has the lowest entropy and the lowest score.** Its tuned
+  temperature (0.035) makes it the sharpest player. This reverses its
+  first place on total regret in study 1.
+- **Status:** confirmed only if both orderings match exactly. With three
+  agents this is an ordinal check and is reported as such, not with a
+  p-value.
+
+**H2, pairwise score differences (statistical).**
+- For each agent pair: the difference in mean score, with a bootstrap 95%
+  CI (10,000 resamples of seeds within each agent) and a two-sided
+  bootstrap p-value. Holm correction across the 3 pairs.
+- Outcomes per pair, with SESOI = 0.02:
+  - Holm p < 0.05 and |difference| ≥ 0.02: **"A above B by at least the
+    effect of interest"**.
+  - Holm p < 0.05 and |difference| < 0.02: **"a real difference below the
+    effect of interest"**.
+  - Holm p ≥ 0.05 and the CI strictly inside (−0.02, 0.02) (open):
+    **"equivalent within the margin"**.
+  - Anything else: **"inconclusive"**.
+
+**H3, each agent against Nash.** A bootstrap 95% CI of each agent's mean
+score, with Holm across the 3 agents:
+- Upper end < 0 (strict): **"exploited"**.
+- Lower end > 0 (strict): **"exploits the opponent"**.
+- Otherwise: **"not distinguishable from the Nash value"**.
+
+**Did the ranking change?** Study 3's order, taken over the pairs H2
+separates, is compared with **both** of study 1's orderings: the
+pre-registered excess-regret order (RL > in-context > fine-tuning) and the
+exploratory total-regret order (in-context > RL > fine-tuning). The ranking
+"changed relative to" an ordering if at least one pair H2 separates points
+the other way. Both comparisons are reported.
+
+## Play-trajectory diagnostics (reported, not tested)
+
+Fictitious play in zero-sum games converges in empirical frequency, not in
+play, so cycling is expected. A null on the score must not be read as
+"nothing happened". Reported per agent:
+- the trailing-M entropy of the agent's moves and of the opponent's;
+- the dominant cycle period: the lag (2–200) of the first local maximum
+  above 0.2 in the autocorrelation of the opponent's best-response sequence
+  (one-hot, averaged over actions), or "none";
+- example trajectories for 3 seeds.
+
+## No internal-state claims
+
+Study 3 makes none. There is no switch to anchor a lead/lag analysis, and
+the last internal-state lag needed three structural nulls to interpret
+(and turned out to be a measurement property). Any future internal-state
+analysis in this environment would start from a structural null.
+
+## Process
+
+1. This section, the opponent code and its tests are committed: always-rock
+   earns −(1 − ε) = −0.9 per round in expectation once M moves are seen;
+   uniform play earns exactly 0; ties and the pre-M rounds are uniform.
+2. Calibration (reference agents only). Its outputs (M, T_w, N, with the
+   power table) are committed.
+3. **Dry run** on a deliberately different opponent (M = 7, ε = 0.5; seeds
+   69000–69019), so it doesn't preview the test condition. Its numbers are
+   not results.
+4. Tag `study3-v1`. The run script refuses a dirty tree or a missing tag
+   and records the commit hash. It runs once on seeds 60000+.
+5. The results are committed unedited, and every outcome is reported,
+   including H1 failing and any "inconclusive".
