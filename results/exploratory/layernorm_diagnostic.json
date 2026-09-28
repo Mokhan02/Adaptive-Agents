@@ -1,0 +1,28 @@
+{
+  "label": "exploratory",
+  "layer1_layernorm": {
+    "median_lag": -3.0,
+    "median_ci95": [
+      -3.0,
+      -2.0
+    ],
+    "n_positive": 6,
+    "n_negative": 94,
+    "n_zero": 0,
+    "sign_test_p": 2.005959521923613e-21,
+    "wilcoxon_p": 1.7707062830761322e-11
+  },
+  "layer2_layernorm": {
+    "median_lag": -2.0,
+    "median_ci95": [
+      -2.0,
+      -1.0
+    ],
+    "n_positive": 7,
+    "n_negative": 93,
+    "n_zero": 0,
+    "sign_test_p": 2.726143732806038e-20,
+    "wilcoxon_p": 3.323887222142205e-11
+  },
+  "verdict": "disconfirmed: mechanism unresolved"
+}

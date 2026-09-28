@@ -648,3 +648,18 @@ stated):
 
 **Stop rule.** Whatever the outcome, no further mechanism diagnostics are
 run. The next step is the write-up.
+
+### LayerNorm diagnostic: result (2026-09-28)
+
+`results/exploratory/layernorm_diagnostic.json`. The code was committed
+(`a77fdea`) before the run, and the reproduction check passed.
+
+| State (LayerNorm-normalized) vs output | Median lag [95% CI] | +/−/0 |
+|---|---|---|
+| Layer 1 (primary) | −3.0 [−3, −2] | 6/94/0 |
+| Layer 2 | −2.0 [−2, −1] | 7/93/0 |
+
+**Verdict: disconfirmed** (median ≤ −1.5, CI upper end < 0). Removing the
+residual's per-round magnitude does not remove the lag, so magnitude drift
+through LayerNorm is not the mechanism. **The mechanism is unresolved.**
+Per the stop rule, no further mechanism diagnostics are run.
