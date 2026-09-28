@@ -241,3 +241,28 @@ agent also returns a non-None `internal_state()`.
   - **The confirmatory script refuses to run** unless the working tree is
     clean, HEAD carries the tag `confirmatory-v1`, and no results file
     exists. The results file records the commit hash.
+- **2026-09-27, additions before tagging `confirmatory-v1`.**
+  - **Ranking: two variants on the same seeds (0–99).** The headline is the
+    common structure (switch at round 200 of 600): it is the test opponent
+    as specified, and every agent gets the same 400-round recovery horizon.
+    The sensitivity variant uses each agent's own calibrated switch_at, so
+    every agent is past warm-up. It reuses the Test A/B switch runs, but the
+    recovery horizons differ by agent (400, 261 and 529 rounds). The
+    fine-tuning agent is still warming up at round 200 in the headline, so
+    its headline recovery mixes learning with adapting. If the two
+    variants order the agents differently, that is reported as a finding.
+  - **Recovery outcomes are counted separately:** recovered, not recovered
+    by episode end, and no pre-switch edge (recovery undefined). All three
+    counts are reported for every agent and variant.
+  - **Secondary regret lag.** |Δ m(t)| has two bumps for a hard switch (the
+    jump, then the recovery), and the argmax may land on either. The mean
+    cross-correlation curve is reported alongside the lags. This analysis
+    is not evidence for or against the primary result.
+  - **Edge case in the outcome mapping.** If the sign test is significant
+    but the median lag is 0, the result is reported as "direction per the
+    nonzero majority, magnitude below resolution".
+  - **Dry run.** `--dry-run` runs the whole pipeline on an allowed non-A/B
+    pair, (0.1, 0.8, 0.1) → (0.1, 0.1, 0.8), with 6 seeds, writing to a
+    scratch path. It was run once, before tagging, to confirm the pipeline
+    completes and writes every output. Its numbers are not results.
+  - **The results file is committed unedited**, including any failed test.

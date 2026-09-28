@@ -43,18 +43,25 @@ def make_agent(name: str, winners_path: str | Path = "results/tuning/winners.jso
     return {"fine_tune": FineTuneAgent, "change_aware": ChangeAwareAgent}[name](**w["config"])
 
 
-def _run(name: str, kind: str, switch_at: int, n_rounds: int, seed: int) -> EpisodeLog:
+TEST_PAIR = (STRATEGY_A, STRATEGY_B)
+# For dry runs of the pipeline only: an allowed pretraining-style pair, far from the held-out set.
+DRY_RUN_PAIR = (np.array([0.1, 0.8, 0.1]), np.array([0.1, 0.1, 0.8]))
+
+
+def _run(name: str, kind: str, switch_at: int, n_rounds: int, pair, seed: int) -> EpisodeLog:
     import torch
 
     torch.set_num_threads(1)
-    opp = (RegimeSwitchOpponent(STRATEGY_A, STRATEGY_B, switch_at=switch_at) if kind == "switch"
-           else RegimeSwitchOpponent.no_switch(STRATEGY_A, switch_at=switch_at))
+    first, second = pair
+    opp = (RegimeSwitchOpponent(first, second, switch_at=switch_at) if kind == "switch"
+           else RegimeSwitchOpponent.no_switch(first, switch_at=switch_at))
     return run_episode(make_agent(name), opp, n_rounds, seed)
 
 
-def run_many(name: str, kind: str, seeds, switch_at: int, n_rounds: int, workers: int = 4) -> list[EpisodeLog]:
+def run_many(name: str, kind: str, seeds, switch_at: int, n_rounds: int, workers: int = 4,
+             pair=TEST_PAIR) -> list[EpisodeLog]:
     with ProcessPoolExecutor(workers) as pool:
-        return list(pool.map(partial(_run, name, kind, switch_at, n_rounds), seeds, chunksize=5))
+        return list(pool.map(partial(_run, name, kind, switch_at, n_rounds, pair), seeds, chunksize=5))
 
 
 # --- calibration ------------------------------------------------------------
@@ -92,6 +99,15 @@ def settle_round(mean_regret: np.ndarray, tail: int = 100, frac: float = 0.1) ->
     band = frac * abs(mean_regret[0] - final)
     outside = np.flatnonzero(np.abs(mean_regret - final) > band)
     return 0 if len(outside) == 0 else int(outside[-1] + 1)
+
+
+def recovery_outcome(log: EpisodeLog) -> tuple[int | None, str]:
+    """(time, "recovered") | (None, "not_recovered") | (None, "no_pre_switch_edge")."""
+    try:
+        t = recovery_time(log)
+    except ValueError:
+        return None, "no_pre_switch_edge"
+    return (t, "recovered") if t is not None else (None, "not_recovered")
 
 
 def safe_recovery(log: EpisodeLog) -> int | None:
@@ -163,13 +179,9 @@ def _z(x: np.ndarray) -> np.ndarray:
     return (x - x.mean()) / (s if s > 0 else 1.0)
 
 
-def lag_estimate(d_s: np.ndarray, d_o: np.ndarray, switch_at: int, W: int, L: int) -> int:
-    """argmax_k corr(D_s(t), D_o(t + k)) within the analysis window, k in [-L, L].
-
-    Positive k: the state's displacement rises k rounds before the behavior's.
-    Linear (non-circular): at each k only overlapping rounds are used. Ties go
-    to the smallest |k|; a tie between +k and -k is 0.
-    """
+def xcorr_curve(d_s: np.ndarray, d_o: np.ndarray, switch_at: int, W: int, L: int) -> dict[int, float]:
+    """corr(D_s(t), D_o(t + k)) for k in [-L, L] within the analysis window.
+    Linear (non-circular): at each k only overlapping rounds are used."""
     s = _z(d_s[switch_at - W : switch_at + W + 1])
     o = _z(d_o[switch_at - W : switch_at + W + 1])
     n = len(s)
@@ -179,6 +191,16 @@ def lag_estimate(d_s: np.ndarray, d_o: np.ndarray, switch_at: int, W: int, L: in
         a, b = a - a.mean(), b - b.mean()
         den = np.sqrt((a @ a) * (b @ b))
         corr[k] = float(a @ b / den) if den > 0 else -np.inf
+    return corr
+
+
+def lag_estimate(d_s: np.ndarray, d_o: np.ndarray, switch_at: int, W: int, L: int) -> int:
+    """argmax_k corr(D_s(t), D_o(t + k)), k in [-L, L].
+
+    Positive k: the state's displacement rises k rounds before the behavior's.
+    Ties go to the smallest |k|; a tie between +k and -k is 0.
+    """
+    corr = xcorr_curve(d_s, d_o, switch_at, W, L)
     best = max(corr.values())
     ties = [k for k, c in corr.items() if np.isclose(c, best, rtol=0, atol=1e-12)]
     m = min(abs(k) for k in ties)
