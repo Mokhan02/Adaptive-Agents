@@ -266,3 +266,91 @@ agent also returns a non-None `internal_state()`.
     scratch path. It was run once, before tagging, to confirm the pipeline
     completes and writes every output. Its numbers are not results.
   - **The results file is committed unedited**, including any failed test.
+
+## Post-results notes (2026-09-27)
+
+Written after the confirmatory run (`results/confirmatory/results.json`,
+tag `confirmatory-v1`, commit `5dcdc62`) and before any follow-up analysis.
+The results file is unchanged; these notes govern how it is reported.
+
+**The primary result as pre-registered.** Test A passed (U = 8527 of 10,000,
+AUC 0.85). Test B: 92 of 100 seeds negative, median lag −2.5, 95% CI [−3, −2].
+The outcome is "representation lags behavior". The claim is narrow: one
+agent, one game, a hard switch, and the state after latest-move correction.
+Test A is a weak gate for this agent, so the evidence is in Test B.
+
+**Caveats reported with it:**
+1. **Sign flip without the correction.** The exploratory raw-state lag is
+   +4.5 (CI [2, 7]). The pre-registered corrected definition decides the
+   headline. The amendment's "not conditional on results" clause, written
+   before any model saw A or B, is what makes that defensible.
+2. **Possible saturation artifact.** The output scores are bounded and
+   saturate once the prediction flips; the state is not bounded. A
+   displacement peak can come earlier on a saturating signal even with
+   simultaneous onsets. This is tested below.
+3. **The secondary regret lag is flat** (49 / 50 / 1) and is not evidence.
+
+**Reclassification of the exploratory Test B results.** For both the RL and
+fine-tuning agents, all 100 lags are exactly 0. The sign test has no
+nonzero observations, so Test B is **not testable by construction**, not
+"no separable lead/lag". The results file's `outcome` string for these
+agents applied the mapping mechanically and is superseded here.
+- RL: expected and pre-recorded (its state contains its outputs).
+- Fine-tuning: **a design error found after the run.** The state (the
+  hidden layer) is one linear map from the logits, which is the same flaw
+  the spec avoided for the in-context agent's final layer.
+- **Deviation from the spec:** the fine-tuning agent's weight-displacement
+  signal (AGENT_SPECS.md, section 2) was not computed by the confirmatory
+  script.
+
+**Reading the ranking.** Excess regret subtracts each agent's own
+pre-switch regret rate. An agent that plays loosely throughout (RL: steady
+regret 0.167 per round, versus in-context 0.015) pays little relative to
+its own baseline. The pre-registered ranking is reported with this sentence
+beside it, and total regret is added as an exploratory column.
+
+**The hold-out claim is not yet established.** The in-context agent's
+excess regret was 11.88 on tuning episodes and 20.7 on A → B, the same
+metric. But the tuning episodes differ in two ways: half were gradual
+switches, and pairs needed only TV ≥ 0.2, while A → B differs by 0.4. Until
+the control below runs, the write-up says "consistent with", not "shows".
+
+### Exploratory follow-ups (defined before running; all labeled exploratory)
+
+Run in this order. Follow-up 1 uses no real seeds.
+
+1. **Planted saturation check.** A latent belief moves linearly from p to q
+   over 50 rounds, matching the context window, starting at the switch. The
+   state is a noisy linear projection of the belief. The behavior is
+   PAYOFF · softmax(β · log belief) + noise, for β ∈ {1, 2, 4, 8}. At β = 1
+   the output is linear in the belief; larger β saturates it. The true lag
+   is zero. The pipeline runs with the in-context calibration (h = 14,
+   W = 86, L = 43). If the estimated lag goes negative as β grows, the
+   pipeline is biased by saturation.
+2. **Unsaturated behavior signal.** Test B on analysis seeds 0–99, with
+   behavior = the final position's logits (the model's raw output, before
+   softmax), centered across actions. The runs are deterministic
+   reproductions of the confirmatory episodes.
+3. **Untrained-network control.** An untrained network (`torch.manual_seed(0)`,
+   the same architecture), with move offsets estimated as for the frozen
+   model and standardization from calibration controls (seeds
+   10100–10199). Test B on seeds 0–99 at the in-context h, W and L, for the
+   corrected and the raw state.
+4. **Sensitivity to h.** Test B for the in-context agent at h = 7 and
+   h = 28 (W and L unchanged).
+5. **Onset comparison.** For each signal, the threshold is the 95th
+   percentile of its displacement in control runs (seeds 1000–1099) over
+   the analysis window. The onset is the first round in [switch_at,
+   switch_at + W] at which the displacement exceeds that threshold. Per
+   seed, the difference is onset(behavior) − onset(state), so positive
+   means the state moves first, as in Test B. Seeds where either onset is
+   missing are counted and excluded. Sign test on the nonzero differences.
+6. **Total regret.** The sum of per-round regret over 600 rounds, for the
+   headline ranking structure (switch at 200, seeds 0–99), all three agents.
+7. **Fine-tuning weight displacement.** The state is the flattened weight
+   vector, unstandardized. Test B at the fine-tuning calibration's h, W, L
+   on seeds 0–99.
+8. **Hold-out control.** 100 hard-switch episodes at round 200 of 600
+   between allowed pairs with TV ∈ [0.35, 0.45], with p and q drawn by the
+   pretraining rules. Seeds 7,000,000–7,000,099. Excess regret for all three
+   agents, to compare with A → B.
