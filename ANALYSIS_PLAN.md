@@ -993,7 +993,7 @@ Settled window [1058, 1358).
 |---|---|---|---|---|
 | In-context | +0.383 / 0.05 | −0.161 | −0.152 | +0.005 |
 | Change-aware RL | +0.219 / 0.55 | −0.052 | −0.046 | +0.001 |
-| Fine-tuning | +0.172 / 0.68 | −0.079 | +0.243 | +0.011 |
+| Fine-tuning | +0.171 / 0.68 | −0.079 | +0.243 | +0.011 |
 
 - **The two phases reward opposite traits.** The in-context agent is near
   optimal against the scripted opponent (the best possible is 0.4) while
@@ -1157,7 +1157,7 @@ agents. Lag is 1 round; 400 seeds per agent per condition.
 | Condition | Agent | Δ score [95% CI] | Outcome (Holm p at floor) | Predicted | Status |
 |---|---|---|---|---|---|
 | Symmetric | Fine-tuning | −0.109 [−0.114, −0.104] | decreases, ≥ margin | decreases | confirmed |
-| Symmetric | In-context | −0.028 [−0.030, −0.024] | decreases, ≥ margin | increases | not confirmed |
+| Symmetric | In-context | −0.027 [−0.030, −0.024] | decreases, ≥ margin | increases | not confirmed |
 | Symmetric | RL | −0.036 [−0.039, −0.034] | decreases, ≥ margin | unchanged | not confirmed |
 | Agent-only | Fine-tuning | −0.163 [−0.167, −0.160] | decreases, ≥ margin | decreases | confirmed |
 | Agent-only | In-context | −0.173 [−0.176, −0.169] | decreases, ≥ margin | unchanged | not confirmed |
@@ -1219,3 +1219,46 @@ The in-context reversal failed in both studies. The "unchanged" predictions
 mostly failed under lag, for the reason noted above (lag delays every
 agent's learning signal). The ranking fine-tuning > RL > in-context held in
 every condition.
+
+**Number audit (2026-09-28).** 42 hand-copied values in the study 3 and 3b
+sections were checked against the results files. Two more rounding errors
+were found and corrected: bridge fine-tuning's scripted score is +0.171 (it
+was written as +0.172), and the symmetric-lag in-context change is −0.027
+(it was written as −0.028). Both came from rounding a displayed 4-digit
+value instead of the stored value. Neither changes any outcome.
+
+## Study 3: M-scaling check (2026-09-28, defined before running; exploratory)
+
+**Question:** why does fine-tuning win against the reactive opponent? Two
+readings make **opposite** predictions for a larger opponent window M:
+- **"Harder to track":** a longer window is a subtler contingency for a
+  few gradient steps to learn, so fine-tuning's score **falls** as M grows.
+- **"Slower opponent":** a longer window makes the opponent hold each best
+  response longer, so its next move is *more* predictable from its own
+  recent moves, which is what fine-tuning reads. Its score **rises** as M
+  grows.
+
+Neither is assumed; the test is two-sided.
+
+**Design.** The frozen fine-tuning and RL agents play the study 3 opponent
+(ε = 0.1) with M ∈ {10, 20, 50}, on seeds 66000–66399 (400 per agent per
+M). M = 5 is study 3's own baseline (per-seed scores in
+`results/study3/baseline_rerun.json`). Episodes and the score window are
+unchanged (1,158 rounds, [858, 1158)).
+- **Caveat:** T_w was calibrated at M = 5. A slower opponent may need a
+  longer warm-up, so the window is reused as stated, not recalibrated.
+- RL is the comparison agent: it reads no context, so it cannot learn a
+  contingency either way.
+
+**Statistics.** For each agent and each M, the change from M = 5, with a
+bootstrap 95% CI (unpaired, 10,000 resamples) and Holm across the 3 M
+values per agent. Outcomes use the study 3b categories (margin 0.02).
+- **Primary reading:** fine-tuning's change at M = 50.
+  - "decreases" supports "harder to track"; "increases" supports "slower
+    opponent"; "unchanged within the margin" supports neither.
+- **Also reported:** fine-tuning's change minus RL's change at each M
+  (difference in differences, bootstrap CI). If both agents move together,
+  the change reflects the opponent's overall strength, not fine-tuning's
+  tracking.
+- This is exploratory: whichever reading it supports is evidence, not proof
+  of mechanism.

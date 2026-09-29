@@ -501,9 +501,67 @@ def obs_run(study: str, dry_run: bool) -> None:
                     f"{r['outcome']}  [predicted: {r['predicted']} -> {r['prediction']}]")
 
 
+def mscale() -> None:
+    """Exploratory M-scaling check (ANALYSIS_PLAN.md). Fine-tuning and RL, M in {10, 20, 50}."""
+    from regime.early_detection import holm
+
+    out = OUT / "mscale.json"
+    if out.exists():
+        raise SystemExit(f"{out} exists")
+    if git("status", "--porcelain", "--untracked-files=no"):
+        raise SystemExit("working tree has uncommitted changes")
+    commit = git("rev-parse", "HEAD")
+    cal = json.loads((OUT / "calibration.json").read_text())
+    T_w, n_rounds = cal["T_w"], cal["n_rounds"]
+    base = {a: np.array(v) for a, v in json.loads((OUT / "baseline_rerun.json").read_text()).items()}
+    progress = OUT / "mscale_progress.log"
+    agents, Ms, seeds = ("fine_tune", "change_aware"), (10, 20, 50), range(66000, 66400)
+
+    scores = {a: {5: base[a]} for a in agents}
+    for a in agents:
+        for M in Ms:
+            with open(progress, "a") as f:
+                f.write(f"{time.strftime('%H:%M:%S')} running {a} M={M}\n")
+            with ProcessPoolExecutor(os.cpu_count()) as pool:
+                runs = list(pool.map(partial(_obs_agent_run, a, M, s3.EPS, n_rounds, {}), seeds, chunksize=5))
+            scores[a][M] = np.array([r["expected"][T_w:].mean() for r in runs])
+
+    res = dict(label="exploratory (M-scaling)", commit=commit, eps=s3.EPS, seeds=[66000, 66399],
+               score_window=[T_w, n_rounds], agents={}, diff_in_diff={})
+    boot = {}
+    for i, a in enumerate(agents):
+        rows, ps = {}, []
+        rng = np.random.default_rng(200 + i)
+        b5 = rng.choice(scores[a][5], (10_000, len(scores[a][5]))).mean(1)
+        for M in Ms:
+            bm = rng.choice(scores[a][M], (10_000, len(scores[a][M]))).mean(1)
+            d = bm - b5
+            boot[(a, M)] = d
+            ps.append(float(max(min(1.0, 2 * min((d <= 0).mean(), (d >= 0).mean())), 1e-4)))
+            rows[str(M)] = dict(score=float(scores[a][M].mean()), delta_vs_M5=float(scores[a][M].mean() - scores[a][5].mean()),
+                                ci95=[float(np.percentile(d, 2.5)), float(np.percentile(d, 97.5))])
+        for M, ph in zip(Ms, holm(ps)):
+            rows[str(M)]["p_holm"] = ph
+            rows[str(M)]["outcome"] = change_outcome(rows[str(M)]["delta_vs_M5"], rows[str(M)]["ci95"], ph)
+        res["agents"][a] = dict(score_M5=float(scores[a][5].mean()), by_M=rows)
+    for M in Ms:
+        dd = boot[("fine_tune", M)] - boot[("change_aware", M)]
+        res["diff_in_diff"][str(M)] = dict(
+            estimate=res["agents"]["fine_tune"]["by_M"][str(M)]["delta_vs_M5"] - res["agents"]["change_aware"]["by_M"][str(M)]["delta_vs_M5"],
+            ci95=[float(np.percentile(dd, 2.5)), float(np.percentile(dd, 97.5))])
+    ft50 = res["agents"]["fine_tune"]["by_M"]["50"]["outcome"]
+    res["primary_reading"] = ("harder to track" if ft50.startswith("decreases") else
+                              "slower opponent" if ft50.startswith("increases") else "neither")
+    out.write_text(json.dumps(res, indent=2))
+    with open(progress, "a") as f:
+        f.write(f"{time.strftime('%H:%M:%S')} saved {out} (commit {commit})\n")
+    print(json.dumps({a: {M: (round(r["delta_vs_M5"], 4), r["outcome"]) for M, r in v["by_M"].items()} for a, v in res["agents"].items()}))
+    print("diff-in-diff:", {M: round(v["estimate"], 4) for M, v in res["diff_in_diff"].items()}, " primary reading:", res["primary_reading"])
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("which", choices=["calibrate", "run", "bridge", "design-check", "obs-run"])
+    ap.add_argument("which", choices=["calibrate", "run", "bridge", "design-check", "obs-run", "mscale"])
     ap.add_argument("--study", choices=["lag", "noise"])
     ap.add_argument("--smoke", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
@@ -516,6 +574,8 @@ def main() -> None:
         design_check()
     elif args.which == "obs-run":
         obs_run(args.study, args.dry_run)
+    elif args.which == "mscale":
+        mscale()
     else:
         calibrate()
 

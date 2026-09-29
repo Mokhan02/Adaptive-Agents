@@ -322,7 +322,7 @@ per phase, never pooled:
 |---|---|---|---|
 | In-context | **+0.383** / 0.05 | −0.161 | −0.152 |
 | Change-aware RL | +0.219 / 0.55 | −0.052 | −0.046 |
-| Fine-tuning | +0.172 / 0.68 | −0.079 | **+0.243** |
+| Fine-tuning | +0.171 / 0.68 | −0.079 | **+0.243** |
 
 - **The two phases reward opposite traits.** The in-context agent's
   near-deterministic play is almost optimal against the script, and is
