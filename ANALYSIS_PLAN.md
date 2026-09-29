@@ -1298,3 +1298,37 @@ floor.
   (+0.128 at M = 10, +0.058 at M = 20). That is consistent with a slower,
   more predictable opponent helping the one agent that learns a contingency
   during play, until the opponent is weak enough for any agent to exploit.
+
+### M-scaling addendum: in-context results (2026-09-29; exploratory)
+
+`results/study3/mscale_in_context.json`. The code was committed (`e17471d`)
+before the run. The RL rerun equalled the first run's RL means exactly. The
+run took about 5.5 hours, because the laptop slowed or slept overnight
+(`caffeinate -i` prevents idle sleep only); the results are unaffected.
+
+| Δ score vs M = 5 | M = 10 | M = 20 | M = 50 |
+|---|---|---|---|
+| In-context (M = 5: −0.157) | +0.197 | +0.241 | +0.599 |
+| In-context − RL | +0.155 | +0.130 | +0.315 |
+
+All three changes are "increases by at least the margin", with Holm p at
+the floor. At M = 50, the in-context agent scores about +0.44, the highest
+of any agent in study 3.
+
+**This revises the fine-tuning reading above.** The in-context agent gains
+*more* than fine-tuning from a slower opponent, even though it never
+updates. So fine-tuning's advantage over RL at intermediate windows is not
+evidence about learning during play. What separates the agents that gain
+most is **reading the opponent's recent moves:** fine-tuning and in-context
+do, RL does not. A slow opponent holds each best response for long
+stretches, so its next move is predictable from its own history, and sharp
+best-responding to that history pays off.
+
+The pattern consistent with all of study 3 (exploratory):
+- Against the **fast** (M = 5) opponent, the in-context agent's sharp play
+  is read and punished. Fine-tuning's in-play learning is what distinguishes
+  it from the in-context agent.
+- As the opponent **slows**, reading its history dominates.
+
+"Harder to track" stays refuted. The mechanism behind fine-tuning's M = 5
+win remains untested beyond this.

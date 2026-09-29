@@ -1,0 +1,14 @@
+22:39:32 running fine_tune M=10
+22:43:22 running fine_tune M=20
+23:31:17 running fine_tune M=50
+00:01:03 running change_aware M=10
+00:29:10 running change_aware M=20
+00:49:37 running change_aware M=50
+01:07:31 saved results/study3/mscale.json (commit 43b07f9b75722913c207d2558d1e8682b52d0377)
+01:07:55 running change_aware M=10 (addendum)
+01:26:10 running change_aware M=20 (addendum)
+01:43:45 running change_aware M=50 (addendum)
+02:04:39 running in_context M=10 (addendum)
+03:36:16 running in_context M=20 (addendum)
+04:56:52 running in_context M=50 (addendum)
+06:30:44 saved results/study3/mscale_in_context.json (commit e17471d2154ee77f3ca61ae2acdd1ce82d65ef0c)
