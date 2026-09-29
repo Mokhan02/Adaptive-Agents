@@ -1,0 +1,19 @@
+21:31:00 baseline in_context: rerunning study 3 seeds
+21:39:49 baseline in_context: bit-identical to study 3
+21:39:49 baseline change_aware: rerunning study 3 seeds
+21:41:19 baseline change_aware: bit-identical to study 3
+21:41:19 baseline fine_tune: rerunning study 3 seeds
+21:43:41 baseline fine_tune: bit-identical to study 3
+21:43:41 lag/symmetric in_context: running 400 seeds
+21:52:22 lag/symmetric change_aware: running 400 seeds
+21:53:54 lag/symmetric fine_tune: running 400 seeds
+21:56:18 lag/agent_only in_context: running 400 seeds
+22:05:25 lag/agent_only change_aware: running 400 seeds
+22:06:54 lag/agent_only fine_tune: running 400 seeds
+22:09:14 saved results/study3/obs_lag.json (commit de8decf43d94901f8a233c29bcbe945baea03312)
+22:09:14 symmetric  in_context    delta -0.0275 [-0.030493518189991475, -0.02449560091593479]  p_holm 0.0003  decreases by at least the margin  [predicted: increases -> not confirmed]
+22:09:14 symmetric  change_aware  delta -0.0363 [-0.03852326580843018, -0.034167960587484975]  p_holm 0.0003  decreases by at least the margin  [predicted: unchanged within the margin -> not confirmed]
+22:09:14 symmetric  fine_tune     delta -0.1091 [-0.11381216482146965, -0.10430238232290209]  p_holm 0.0003  decreases by at least the margin  [predicted: decreases -> confirmed]
+22:09:14 agent_only in_context    delta -0.1726 [-0.1757321146534845, -0.1694068246108144]  p_holm 0.0003  decreases by at least the margin  [predicted: unchanged within the margin -> not confirmed]
+22:09:14 agent_only change_aware  delta -0.0453 [-0.04747552927270903, -0.043061735956565365]  p_holm 0.0003  decreases by at least the margin  [predicted: unchanged within the margin -> not confirmed]
+22:09:14 agent_only fine_tune     delta -0.1634 [-0.1671175145671805, -0.15982854941227964]  p_holm 0.0003  decreases by at least the margin  [predicted: decreases -> confirmed]
