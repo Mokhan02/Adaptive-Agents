@@ -1100,6 +1100,15 @@ Each directional prediction counts as confirmed only if its category
 matches: "increases" or "decreases" with p < 0.05, or "unchanged within the
 margin" where no change was predicted.
 
+**If a level falls back to "minimal perturbation"** (no level moved any
+reference agent by the bar), a predicted *change* that doesn't appear at
+that level is reported as **"not testable at this level"**, never as "the
+predicted effect did not occur". This matters most for the in-context
+reversal. The same distinction kept study 2's "infeasible as designed"
+apart from "no effect". Predictions of *no change* are still evaluated as
+written. Added 2026-09-28, while the design check was running and before
+its levels were known.
+
 ## Process
 
 This draft and the code are committed. The design check (reference agents)
