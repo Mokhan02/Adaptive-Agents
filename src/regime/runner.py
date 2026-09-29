@@ -35,9 +35,27 @@ def run_episode(
     opponent: RegimeSwitchOpponent,
     n_rounds: int,
     seed: int,
+    agent_lag: int = 0,
+    opponent_lag: int = 0,
+    agent_noise: float = 0.0,
+    opponent_noise: float = 0.0,
 ) -> EpisodeLog:
+    """Play one episode.
+
+    Partial observability (study 3; all default to off, which reproduces earlier results exactly):
+    - agent_lag: the agent receives round t's (own action, opponent move, reward) after round t + lag.
+    - opponent_lag: a reactive opponent sees the agent's round-t move after round t + lag.
+    - agent_noise / opponent_noise: with this probability the *observed* move is replaced by a uniform
+      draw over all three moves (it can come out unchanged). Rewards are never corrupted.
+    """
+    from collections import deque
+
     rng = np.random.default_rng(seed)
     agent_rng, opp_rng = rng.spawn(2)
+    # Separate streams, spawned only when used, so the defaults leave every other stream untouched.
+    noise_a, noise_o = rng.spawn(2) if (agent_noise or opponent_noise) else (None, None)
+    to_agent: deque = deque()
+    to_opponent: deque = deque()
     agent.reset(agent_rng)
     if hasattr(opponent, "reset"):  # reactive opponents carry per-episode state
         opponent.reset()
@@ -55,12 +73,19 @@ def run_episode(
         pi = agent.policy()
         opp_dist = opponent.distribution(t)
         a = int(agent_rng.choice(len(pi), p=pi))
+        agent.on_action(a)
         b = opponent.act(t, opp_rng)
         r = PAYOFF[a, b]
 
-        agent.observe(a, b, r)
-        if hasattr(opponent, "observe_agent"):  # a reactive opponent sees the agent's move, no lag
-            opponent.observe_agent(a)
+        b_seen = b if not agent_noise or noise_a.random() >= agent_noise else int(noise_a.integers(3))
+        to_agent.append((a, b_seen, r))
+        while len(to_agent) > agent_lag:
+            agent.observe(*to_agent.popleft())
+        if hasattr(opponent, "observe_agent"):  # a reactive opponent sees the agent's move
+            a_seen = a if not opponent_noise or noise_o.random() >= opponent_noise else int(noise_o.integers(3))
+            to_opponent.append(a_seen)
+            while len(to_opponent) > opponent_lag:
+                opponent.observe_agent(to_opponent.popleft())
 
         agent_actions[t], opp_actions[t], rewards[t] = a, b, r
         expected[t] = float(pi @ expected_payoffs(opp_dist))

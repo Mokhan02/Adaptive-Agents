@@ -46,7 +46,11 @@ class FineTuneAgent(Agent):
         self.t = 0
         self.history: deque[int] = deque(maxlen=self.window)
         self.baseline = 0.0
+        self._pending: deque = deque()  # (decision-time input, action), for delayed feedback
         self._forward()
+
+    def on_action(self, action: int) -> None:
+        self._pending.append((self._x.copy(), action))
 
     def _input(self) -> np.ndarray:
         x = np.zeros((self.window, N_ACTIONS))
@@ -68,16 +72,28 @@ class FineTuneAgent(Agent):
         z = np.exp(self._logits - self._logits.max())
         return z / z.sum()
 
-    def gradients(self, action: int, advantage: float) -> list[np.ndarray]:
-        """Gradients of the loss -advantage * log pi(action | x)."""
+    def gradients(self, action: int, advantage: float, x: np.ndarray | None = None) -> list[np.ndarray]:
+        """Gradients of -advantage * log pi(action | x) at the current weights. `x` is the input the
+        action was chosen from (defaults to the current input, the no-lag case)."""
         W1, b1, W2, b2 = self.params
-        dlogits = -advantage * (np.eye(N_ACTIONS)[action] - self.policy())
-        dh = W2.T @ dlogits * (1 - self._h**2)
-        return [np.outer(dh, self._x), dh, np.outer(dlogits, self._h), dlogits]
+        if x is None:
+            x, h, logits = self._x, self._h, self._logits
+        else:
+            h = np.tanh(W1 @ x + b1)
+            logits = W2 @ h + b2
+        z = np.exp(logits - logits.max())
+        dlogits = -advantage * (np.eye(N_ACTIONS)[action] - z / z.sum())
+        dh = W2.T @ dlogits * (1 - h**2)
+        return [np.outer(dh, x), dh, np.outer(dlogits, h), dlogits]
 
     def observe(self, my_action: int, opp_action: int, reward: float) -> None:
-        # Policy-gradient step on the input the action was chosen from.
-        grads = self.gradients(my_action, reward - self.baseline)
+        # Policy-gradient step on the input the action was chosen from. Under lag, that is the stored
+        # decision-time input (delayed REINFORCE); without lag it equals the current input.
+        x = None
+        if self._pending:
+            x, acted = self._pending.popleft()
+            assert acted == my_action, "feedback arrived out of order"
+        grads = self.gradients(my_action, reward - self.baseline, x)
         self.t += 1
         b1c, b2c = 1 - self.BETAS[0] ** self.t, 1 - self.BETAS[1] ** self.t
         for p, g, m, v in zip(self.params, grads, self.m, self.v):

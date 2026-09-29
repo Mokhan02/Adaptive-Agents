@@ -22,6 +22,10 @@ class Agent(ABC):
     def policy(self) -> np.ndarray:
         """Distribution over actions for the current round."""
 
+    def on_action(self, action: int) -> None:
+        """Called when the agent's action for this round is sampled, before any feedback arrives.
+        Agents whose update needs the decision-time input (fine-tuning, under lag) record it here."""
+
     @abstractmethod
     def observe(self, my_action: int, opp_action: int, reward: float) -> None:
         """Update after a round is played."""

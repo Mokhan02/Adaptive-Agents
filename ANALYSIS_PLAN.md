@@ -1007,3 +1007,103 @@ Settled window [1058, 1358).
   settled-minus-primary differences are below the 0.02 effect of interest.
   Their CIs cover only the bridge run's own uncertainty; the primary's CI
   is reported beside them in the results file.
+
+---
+
+# Study 3b: partial observability (draft, 2026-09-28; frozen at tag `study3b-v1`)
+
+The same frozen agents and fictitious-play opponent as study 3 (M = 5,
+ε = 0.1, 1,158 rounds, score window [858, 1158)), with observation lag or
+noise added. This addresses the outside objection that the setup had "no
+latency, no noise". The standing conventions apply.
+
+## Mechanics (`runner.run_episode`; specified by `tests/test_observability.py`)
+
+- **Agent lag k:** the agent receives round t's (own action, opponent move,
+  reward) after round t + k. Feedback from the last k rounds never arrives.
+- **Opponent lag k:** the opponent's window holds the agent's moves from k
+  rounds earlier.
+- **Noise q:** with probability q, an observed move is replaced by a draw
+  uniform over all three moves, which can come out unchanged, so the actual
+  corruption rate is 2q/3. Rewards are never corrupted.
+  - The test pins this down: always-rock's expected reward under opponent
+    noise matches exact enumeration over all 3⁵ windows.
+- **The fine-tuning agent's update under lag is delayed REINFORCE.** It
+  stores the input each action was chosen from and applies the gradient to
+  that input, at the current weights, when feedback arrives. Without that,
+  its update would pair a reward with the wrong input, so it would be
+  degraded by the implementation, not by the information loss.
+  - With no lag, the new code reproduces study 3's saved trajectories
+    exactly for all three agents (tested).
+
+## Order: lag first, then noise
+
+Lag goes first because it is the more direct reading of the objection (no
+latency). Noise follows the same design and runs only after the lag
+results are recorded.
+
+## Choosing the lag and noise levels (a design check on reference agents only)
+
+A level too weak to move play by the effect of interest (0.02) would spend
+a study confirming a null by design. So the levels are chosen on reference
+agents, never the three frozen agents, with seeds 70000–70099:
+- The five study 3 reference agents are run under **symmetric** lag
+  k ∈ {1, 2, 3, 5} and **symmetric** noise q ∈ {0.1, 0.2, 0.3}, plus the
+  no-lag, no-noise baseline. Each is scored over [858, 1158).
+- **Rule:** k* is the smallest k in {1, 2, 3, 5} at which at least one
+  reference agent's score moves by at least 0.02 (closed) *and* by more
+  than 2 SE of the difference (strict). q* is chosen the same way from
+  {0.1, 0.2, 0.3}.
+- **If no level qualifies,** the largest level is used and the condition
+  is labeled "minimal perturbation": a check that a small realistic
+  perturbation doesn't change conclusions, not a test of an effect.
+
+## Conditions (400 seeds per agent each)
+
+| Condition | Lag study (seeds) | Noise study (seeds) |
+|---|---|---|
+| **Symmetric** (primary): both sides lagged or noisy | k*, both sides (62000–62399) | q*, both sides (64000–64399) |
+| **Agent-only** (secondary): isolates the agent's information, the objection's actual subject | k*, agent side (63000–63399) | q*, agent side (65000–65399) |
+
+**Baseline:** study 3's primary runs (seeds 60000–60399), rerun to get
+per-seed scores (the results file stores summaries only). The rerun must
+reproduce study 3's per-agent means exactly (asserted).
+
+## Hypotheses (per agent, directional; stated before any run)
+
+Symmetric lag or noise degrades *both* the agent's information and the
+opponent's tracking. These can pull in opposite directions for different
+agents, so an aggregate null could hide opposite-signed effects. Every test
+is therefore **per agent**, never pooled.
+- **Fine-tuning:** its score **decreases** under both conditions, because
+  the reaction rule it can learn is built from stale or noisy observations.
+- **In-context:** its score **increases** (it is less exploited) under the
+  symmetric condition, because the opponent's tracker is stale or noisy and
+  this is the most exploitable agent. Under agent-only it is **unchanged**
+  (|Δ| < 0.02): it cannot exploit this opponent either way.
+- **RL:** **unchanged** (|Δ| < 0.02) under both, because near-random play
+  gives the opponent little to track, and the agent uses no context.
+
+## Tests
+
+Per agent and condition, Δ = score(condition) − score(baseline). Both are
+means over seeds; the CI and p-value come from an unpaired bootstrap with
+10,000 resamples. Holm correction across the 3 agents within each
+condition. Outcomes, with a 0.02 margin (as in study 3's H2):
+- **Holm p < 0.05:** "increases" or "decreases", and by at least or less
+  than 0.02.
+- **Holm p ≥ 0.05, with the CI strictly inside (−0.02, 0.02):**
+  "unchanged within the margin".
+- **Otherwise:** inconclusive.
+
+Each directional prediction counts as confirmed only if its category
+matches: "increases" or "decreases" with p < 0.05, or "unchanged within the
+margin" where no change was predicted.
+
+## Process
+
+This draft and the code are committed. The design check (reference agents)
+fixes k* and q*, and its results are committed. The dry run uses a
+different opponent (M = 7, ε = 0.5) and **prints no numbers**. Then the tag
+`study3b-v1`, one run of the lag conditions, results recorded, then the
+noise conditions.

@@ -313,9 +313,64 @@ def bridge(smoke: bool) -> None:
     print("smoke test completed; outputs written (numbers not shown)" if smoke else f"saved {out} (commit {commit})")
 
 
+def _obs_ref_run(name: str, window: int, n_rounds: int, lag: int, noise: float, seed: int) -> np.ndarray:
+    from regime.env import FictitiousPlayOpponent
+    from regime.runner import run_episode
+
+    agent = s3.reference_agents()[name]()
+    return run_episode(agent, FictitiousPlayOpponent(window, s3.EPS), n_rounds, seed, agent_lag=lag,
+                       opponent_lag=lag, agent_noise=noise, opponent_noise=noise).expected_rewards
+
+
+def design_check() -> None:
+    """Study 3b: choose k* and q* on reference agents only (ANALYSIS_PLAN.md, "Study 3b")."""
+    out = OUT / "observability_design_check.json"
+    if out.exists():
+        raise SystemExit(f"{out} exists")
+    cal = json.loads((OUT / "calibration.json").read_text())
+    M, T_w, n_rounds = cal["M"], cal["T_w"], cal["n_rounds"]
+    seeds = range(70000, 70100)
+    names = list(s3.reference_agents())
+
+    def scores(lag, noise):
+        res = {}
+        for n in names:
+            with ProcessPoolExecutor(os.cpu_count()) as pool:
+                runs = list(pool.map(partial(_obs_ref_run, n, M, n_rounds, lag, noise), seeds, chunksize=5))
+            res[n] = np.array([r[T_w:].mean() for r in runs])
+        return res
+
+    base = scores(0, 0.0)
+
+    def moved(cond):
+        rows = {}
+        for n in names:
+            d = float(cond[n].mean() - base[n].mean())
+            se = float(np.hypot(cond[n].std() / 10, base[n].std() / 10))
+            rows[n] = dict(delta=d, se_diff=se, qualifies=bool(abs(d) >= s3.SESOI and abs(d) > 2 * se))
+        return rows
+
+    table, chosen = {"lag": {}, "noise": {}}, {}
+    for kind, levels in (("lag", (1, 2, 3, 5)), ("noise", (0.1, 0.2, 0.3))):
+        for lvl in levels:
+            rows = moved(scores(lvl, 0.0) if kind == "lag" else scores(0, lvl))
+            table[kind][str(lvl)] = rows
+            ok = any(r["qualifies"] for r in rows.values())
+            print(f"{kind}={lvl}: " + "  ".join(f"{n} {r['delta']:+.3f}" for n, r in rows.items()) + f"  qualifies={ok}",
+                  flush=True)
+            if ok and kind not in chosen:
+                chosen[kind] = dict(level=lvl, minimal_perturbation=False)
+        if kind not in chosen:
+            chosen[kind] = dict(level=levels[-1], minimal_perturbation=True)
+    out.write_text(json.dumps(dict(seeds=[70000, 70099], reference_agents_only=True,
+                                   baseline_means={n: float(v.mean()) for n, v in base.items()},
+                                   table=table, chosen=chosen), indent=2))
+    print("chosen:", chosen)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("which", choices=["calibrate", "run", "bridge"])
+    ap.add_argument("which", choices=["calibrate", "run", "bridge", "design-check"])
     ap.add_argument("--smoke", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
@@ -323,6 +378,8 @@ def main() -> None:
         run(args.dry_run)
     elif args.which == "bridge":
         bridge(args.smoke)
+    elif args.which == "design-check":
+        design_check()
     else:
         calibrate()
 
