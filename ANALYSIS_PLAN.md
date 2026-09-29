@@ -941,9 +941,11 @@ has not been run. Future dry runs should suppress their summary numbers.
   gradient steps.
 - *H1 matched, but it does not explain the headline.* Entropy accounts for
   who is exploited, not for fine-tuning exploiting the opponent. RL's lack
-  of cycling is consistent with H1, but it is not independent evidence: the
-  diagnostic replays the opponent's best responses from the agent's own
-  moves, so near-random play yields no cycle almost by construction.
+  of cycling is consistent with H1, but for this agent it is not a second
+  finding. Near-random play is both high-entropy and unordered, so one
+  cause produces both numbers. In general the measures differ (repeating
+  rock-paper-scissors has maximal entropy and a 3-round cycle). The saved
+  summaries cannot show how closely they track per run.
 - *The in-context agent's last place is evidence about transfer,* as the
   hypothesis states. It cannot see its own moves, and it never met a
   reactive opponent in pretraining.
@@ -980,3 +982,28 @@ is computed, since there is no reference level to recover to.
 **Process.** The code is committed before the run. The smoke test (4 seeds,
 M = 7, ε = 0.5) prints only whether it completed, not its numbers. The
 results are committed unedited, with the commit hash recorded.
+
+### Bridge condition (b): results (2026-09-28; exploratory)
+
+`results/study3/bridge.json`, committed unedited (`6f2a761`). The code was
+committed (`4de4fa6`) before the run. 400 seeds per agent (61000–61399).
+Settled window [1058, 1358).
+
+| Agent | Scripted phase: score / entropy | Early reactive score | Settled reactive score | Settled − primary |
+|---|---|---|---|---|
+| In-context | +0.383 / 0.05 | −0.161 | −0.152 | +0.005 |
+| Change-aware RL | +0.219 / 0.55 | −0.052 | −0.046 | +0.001 |
+| Fine-tuning | +0.172 / 0.68 | −0.079 | +0.243 | +0.011 |
+
+- **The two phases reward opposite traits.** The in-context agent is near
+  optimal against the scripted opponent (the best possible is 0.4) while
+  playing almost deterministically, and is exploited as soon as the
+  opponent reacts. The phases are reported separately, as pre-registered.
+- **Only fine-tuning improves within the reactive phase,** from −0.079 in
+  the first 200 reactive rounds to +0.243 settled. The others are flat.
+  This is a demonstrated within-episode change, consistent with it changing
+  its mapping during play. The specific mechanism is still untested.
+- **Arriving from a scripted regime barely changes long-run play.** All
+  settled-minus-primary differences are below the 0.02 effect of interest.
+  Their CIs cover only the bridge run's own uncertainty; the primary's CI
+  is reported beside them in the results file.

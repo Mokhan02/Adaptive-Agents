@@ -291,8 +291,12 @@ agent's last 5 moves, and plays uniformly at random 10% of the time.
   matches their order by score, with the in-context agent lowest on both.
   RL's near-random play leaves the opponent's tracker almost nothing to
   lock onto: in 394 of 400 runs there is no cycle in the opponent's best
-  responses. That is consistent with H1, but it isn't independent evidence,
-  because the cycle diagnostic is computed from the agent's own moves.
+  responses. That is consistent with H1, but for this agent it isn't a
+  second finding. Near-random play is both high-entropy and unordered, so
+  one cause produces both numbers. In general the two measures differ:
+  entropy describes the mix of moves and cycling describes their order.
+  Repeating rock-paper-scissors has maximal entropy and a perfect
+  3-round cycle.
 
 **Demonstrated:** fine-tuning wins by a wide, well-powered margin, and it
 is the only agent that exploits the opponent. It is also the only agent
@@ -307,6 +311,25 @@ is what fine-tuning reads. The saved data can't check this. A follow-up
 could test whether the advantage shrinks as the opponent's window grows.
 H1 explains who gets exploited, not fine-tuning's exploitation of the
 opponent.
+
+**Bridge condition (exploratory).** The opponent plays study 1's scripted
+Strategy A for 200 rounds, then turns reactive. Every measure is computed
+per phase, never pooled:
+
+| Agent | Scripted phase: score / entropy | First 200 reactive rounds | Settled reactive |
+|---|---|---|---|
+| In-context | **+0.383** / 0.05 | −0.161 | −0.152 |
+| Change-aware RL | +0.219 / 0.55 | −0.052 | −0.046 |
+| Fine-tuning | +0.172 / 0.68 | −0.079 | **+0.243** |
+
+- **The two phases reward opposite traits.** The in-context agent's
+  near-deterministic play is almost optimal against the script, and is
+  exploited as soon as the opponent reacts.
+- **Only fine-tuning improves during the reactive phase.** The others are
+  flat. That is a demonstrated within-episode change, still consistent with
+  (not proof of) the tracking mechanism.
+- **Starting from the script changes no agent's settled score by more than
+  0.011,** below the 0.02 effect of interest.
 
 **Also on record:** a dry run on a different opponent from the same
 family, run before the tag, previewed this direction. It is disclosed in
