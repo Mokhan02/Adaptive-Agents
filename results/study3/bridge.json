@@ -1,0 +1,75 @@
+{
+  "label": "exploratory (bridge condition b)",
+  "commit": "4de4fa68976adb1a1c5caf5b87365b7ade35cab5",
+  "smoke": false,
+  "opponent": {
+    "M": 5,
+    "eps": 0.1,
+    "switch_at": 200
+  },
+  "n_rounds": 1358,
+  "settled_window": [
+    1058,
+    1358
+  ],
+  "seeds": [
+    61000,
+    61399
+  ],
+  "agents": {
+    "in_context": {
+      "scripted_score": 0.3833580833599814,
+      "scripted_entropy": 0.048674248088675626,
+      "early_reactive_score": -0.16066909849621303,
+      "settled_reactive_score": -0.15191054078050267,
+      "settled_reactive_entropy": 0.5609908562517167,
+      "settled_cycle_period_median": 15.0,
+      "settled_cycle_none_count": 23,
+      "settled_minus_primary": 0.004730312274450699,
+      "settled_minus_primary_ci95_bridge_side": [
+        0.00251583266552452,
+        0.006885907032207844
+      ],
+      "primary_ci95": [
+        -0.1588038926401353,
+        -0.15450816991893612
+      ]
+    },
+    "change_aware": {
+      "scripted_score": 0.21855656713042926,
+      "scripted_entropy": 0.5521969972572227,
+      "early_reactive_score": -0.05165036487846871,
+      "settled_reactive_score": -0.0462660030984982,
+      "settled_reactive_entropy": 0.7797059613639766,
+      "settled_cycle_period_median": 32.0,
+      "settled_cycle_none_count": 392,
+      "settled_minus_primary": 0.0011822157636846575,
+      "settled_minus_primary_ci95_bridge_side": [
+        -0.0003137269960579239,
+        0.002646849554475701
+      ],
+      "primary_ci95": [
+        -0.048961989828180896,
+        -0.0458749248415378
+      ]
+    },
+    "fine_tune": {
+      "scripted_score": 0.1714842691927943,
+      "scripted_entropy": 0.6777018567749471,
+      "early_reactive_score": -0.07936094037276725,
+      "settled_reactive_score": 0.2432628647543374,
+      "settled_reactive_entropy": 0.8630044788216938,
+      "settled_cycle_period_median": 8.0,
+      "settled_cycle_none_count": 43,
+      "settled_minus_primary": 0.010895227854917172,
+      "settled_minus_primary_ci95_bridge_side": [
+        0.007608821127312176,
+        0.014256098493674846
+      ],
+      "primary_ci95": [
+        0.22936831234335456,
+        0.23536293153542615
+      ]
+    }
+  }
+}
