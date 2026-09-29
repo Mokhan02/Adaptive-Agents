@@ -242,6 +242,37 @@ def fig_structural_nulls() -> None:
     savefig(fig, "6_structural_nulls.png")
 
 
+def fig_study3() -> None:
+    r = load("results/study3/results.json")
+    order = ["fine_tune", "change_aware", "in_context"]
+    fig, axes = plt.subplots(1, 2, figsize=(9, 3.6))
+    for ax, (title, vals, errs) in zip(axes, [
+        ("Score vs a reactive opponent (Nash = 0)", [r["H3"][a]["mean"] for a in order],
+         [[r["H3"][a]["mean"] - r["H3"][a]["ci95"][0] for a in order], [r["H3"][a]["ci95"][1] - r["H3"][a]["mean"] for a in order]]),
+        ("Predictability: trailing-5 entropy (nats)", [r["H1"]["entropy"][a] for a in order], None),
+    ]):
+        x = np.arange(len(order))
+        ax.bar(x, vals, width=0.6, color=[AGENT_COLOR[a] for a in order], edgecolor=SURFACE, linewidth=2)
+        if errs:
+            ax.errorbar(x, vals, yerr=errs, fmt="none", ecolor=INK_2, elinewidth=1.2, capsize=3)
+            ax.axhline(0, color=INK_2, linewidth=1)
+        for xi, v in zip(x, vals):
+            ax.annotate(f"{v:+.3f}" if errs else f"{v:.3f}", (xi, v), xytext=(0, 4 if v >= 0 else -12),
+                        textcoords="offset points", ha="center", fontsize=9, color=INK_2)
+        ax.set_xticks(x, [AGENT_LABEL[a] for a in order])
+        ax.set_title(title)
+        ax.set_axisbelow(True)
+        ax.grid(axis="x", visible=False)
+    axes[0].set_ylim(-0.2, 0.28)
+    axes[1].set_ylim(0, 1.25)
+    axes[1].axhline(np.log(3), color=INK_2, linewidth=1, linestyle=":")
+    axes[1].text(-0.35, np.log(3) + 0.02, "uniform play (ln 3)", va="bottom", ha="left", fontsize=8.5, color=INK_2)
+    fig.suptitle("Study 3: frozen agents against a fictitious-play opponent (400 seeds each)",
+                 fontweight="semibold", color=INK, fontsize=11)
+    fig.tight_layout()
+    savefig(fig, "7_study3.png")
+
+
 def main() -> None:
     conf = load("results/confirmatory/results.json")
     logs = {a: run_many(a, "switch", ANALYSIS_SWITCH_SEEDS, 200, 600) for a in AGENTS}
@@ -258,6 +289,7 @@ def main() -> None:
     fig_robustness(conf)
     fig_ranking(conf)
     fig_structural_nulls()
+    fig_study3()
 
 
 if __name__ == "__main__":

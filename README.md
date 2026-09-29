@@ -58,6 +58,15 @@ committed unedited.
    distribution did not transfer to the test pair, R² −0.02), and a
    dimension sweep. [Details](#structural-null-check-the-lag-is-a-property-of-the-measurement).
 
+4. **Against a reactive opponent, the ranking reverses.** Study 3 swaps the
+   scripted opponent for one that best-responds to the agent's recent play.
+   The frozen agents are run unchanged, as a transfer test. Fine-tuning,
+   last in study 1, now exploits the opponent (+0.23 per round). The
+   in-context agent, first on total regret in study 1, is exploited most
+   (−0.16). As pre-registered, predictability (the entropy of each agent's
+   own recent play) orders the agents the same way as their scores.
+   [Details](#study-3-a-reactive-opponent).
+
 Every interpretation rule was fixed before its data existed. One verdict
 landed exactly on an ambiguous endpoint of such a rule and is reported as
 "on the boundary" rather than resolved after the fact. See the standing
@@ -250,6 +259,58 @@ not frozen). It never reached its fresh test seeds:
   control far from 0, which led to the structural-null finding above.
   Study 2 is on hold. A redesign would have to compare the state against a
   structural null rather than against zero.
+
+### Study 3: a reactive opponent
+
+Studies 1–2 used a scripted opponent: nonstationary, but not competitive.
+Study 3 ([ANALYSIS_PLAN.md](ANALYSIS_PLAN.md), "Study 3"; tag `study3-v1`)
+replaces it with a fictitious-play opponent. It best-responds to the
+agent's last 5 moves, and plays uniformly at random 10% of the time.
+
+- **The three agents are frozen,** so this is a transfer test.
+- **The in-context agent is handicapped by design, and this is part of the
+  hypothesis:** it sees only the opponent's moves, never its own, and never
+  met a reactive opponent in pretraining.
+- **The metric** is expected reward per round, with 0 as the Nash baseline:
+  uniform play earns exactly 0 against any opponent.
+- **Calibration used only reference agents,** never the three frozen ones.
+
+![Study 3 scores and predictability](figures/7_study3.png)
+
+| Agent | Score [95% CI] | Against Nash | Trailing-5 entropy |
+|---|---|---|---|
+| Fine-tuning | **+0.232** [0.229, 0.235] | exploits the opponent | 0.865 |
+| Change-aware RL | −0.047 [−0.049, −0.046] | exploited | 0.780 |
+| In-context | **−0.157** [−0.159, −0.155] | exploited | 0.560 |
+
+- **Every pair is separated** by far more than the 0.02 effect of
+  interest, with Holm-adjusted p at the bootstrap floor. The ranking changes
+  against both of study 1's orderings.
+- **The pre-registered prediction, H1, is confirmed** as an ordinal check
+  on three agents (not a statistical test). The agents' order by entropy
+  matches their order by score, with the in-context agent lowest on both.
+  RL's near-random play leaves the opponent's tracker almost nothing to
+  lock onto: in 394 of 400 runs there is no cycle in the opponent's best
+  responses. That is consistent with H1, but it isn't independent evidence,
+  because the cycle diagnostic is computed from the agent's own moves.
+
+**Demonstrated:** fine-tuning wins by a wide, well-powered margin, and it
+is the only agent that exploits the opponent. It is also the only agent
+that both conditions on recent history *and* changes its mapping during
+play. RL updates every round but has no context input; the in-context
+agent reads context, but its mapping is frozen.
+
+**Not tested:** *why* fine-tuning wins. The result is *consistent with* it
+learning the opponent's reaction rule. The opponent answers the agent's
+last 5 moves, which correlate with the opponent's own recent moves, which
+is what fine-tuning reads. The saved data can't check this. A follow-up
+could test whether the advantage shrinks as the opponent's window grows.
+H1 explains who gets exploited, not fine-tuning's exploitation of the
+opponent.
+
+**Also on record:** a dry run on a different opponent from the same
+family, run before the tag, previewed this direction. It is disclosed in
+the plan, and nothing was adjusted in response.
 
 ## How it was done
 

@@ -897,3 +897,55 @@ fine-tuning +0.020, RL −0.041, in-context −0.105, with entropies in the same
 order (H1 holds there). Every rule was already fixed. Nothing was adjusted
 in response, and the test condition (M = 5, ε = 0.1, seeds 60000–60399)
 has not been run. Future dry runs should suppress their summary numbers.
+
+## Study 3: results (2026-09-28)
+
+`results/study3/results.json`, committed unedited (`49bbc9f`), from the tag
+`study3-v1` (`5421954`). Opponent M = 5, ε = 0.1; 400 seeds per agent
+(60000–60399); score window [858, 1158).
+
+| Agent | Score [95% CI] | H3 (vs Nash) | Trailing-M entropy |
+|---|---|---|---|
+| Fine-tuning | +0.232 [0.229, 0.235] | exploits the opponent | 0.865 |
+| Change-aware RL | −0.047 [−0.049, −0.046] | exploited | 0.780 |
+| In-context | −0.157 [−0.159, −0.155] | exploited | 0.560 |
+
+- **H2:** every pair is separated by at least the effect of interest.
+  Differences: fine-tuning − RL +0.280, RL − in-context +0.109,
+  fine-tuning − in-context +0.389. Holm p is at the bootstrap floor, and
+  achieved power is about 1.
+- **H1: confirmed**, as an ordinal check on n = 3, not a statistical test.
+  The entropy order equals the score order, with the in-context agent
+  lowest on both.
+- **Ranking: changed** against both of study 1's orders. Fine-tuning goes
+  from last to first; the in-context agent goes from first on total regret
+  to last.
+- **Diagnostics:** the median cycle period of the opponent's best response
+  is 15 rounds against the in-context agent and 8 against fine-tuning.
+  Against RL, 394 of 400 runs have no cycle, because its near-random play
+  gives the opponent's tracker little structure to follow.
+
+**What is demonstrated and what is not.**
+- *Demonstrated:* fine-tuning wins by a wide, well-powered margin, and it
+  is the only agent that exploits the opponent. It is also the only agent
+  that both conditions on recent history and changes its mapping during
+  play. RL updates every round but has no context input, so it cannot
+  represent a contingency. The in-context agent conditions on history, but
+  its mapping is frozen and was learned against non-reactive opponents.
+- *Not tested:* **why** fine-tuning wins. Its result is *consistent with*
+  learning the opponent's reaction rule (the opponent answers the agent's
+  last 5 moves, which correlate with the opponent's own recent moves, which
+  is what fine-tuning reads). The saved data (summaries only) cannot check
+  this. A candidate follow-up would test whether its advantage shrinks as
+  M grows, since a longer window should be harder to track with a few
+  gradient steps.
+- *H1 matched, but it does not explain the headline.* Entropy accounts for
+  who is exploited, not for fine-tuning exploiting the opponent. RL's lack
+  of cycling is consistent with H1, but it is not independent evidence: the
+  diagnostic replays the opponent's best responses from the agent's own
+  moves, so near-random play yields no cycle almost by construction.
+- *The in-context agent's last place is evidence about transfer,* as the
+  hypothesis states. It cannot see its own moves, and it never met a
+  reactive opponent in pretraining.
+- *The dry run previewed this direction* (disclosed above); nothing was
+  adjusted.
