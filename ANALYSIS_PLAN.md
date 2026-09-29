@@ -1146,3 +1146,42 @@ seeds 70000–70099. The code was committed (`964931a`) before the run.
 The draft's conditions therefore use **agent and opponent lag 1** (lag
 study) and **noise 0.1 on both sides** (noise study), each with an
 agent-only secondary.
+
+## Study 3b lag study: results (2026-09-28)
+
+`results/study3/obs_lag.json`, committed unedited (`d937990`), from the tag
+`study3b-v1` (`de8decf`). The baseline rerun of study 3 was bit-identical
+(example trajectories move for move, means under `==`) for all three
+agents. Lag is 1 round; 400 seeds per agent per condition.
+
+| Condition | Agent | Δ score [95% CI] | Outcome (Holm p at floor) | Predicted | Status |
+|---|---|---|---|---|---|
+| Symmetric | Fine-tuning | −0.109 [−0.114, −0.104] | decreases, ≥ margin | decreases | confirmed |
+| Symmetric | In-context | −0.028 [−0.030, −0.024] | decreases, ≥ margin | increases | not confirmed |
+| Symmetric | RL | −0.036 [−0.039, −0.034] | decreases, ≥ margin | unchanged | not confirmed |
+| Agent-only | Fine-tuning | −0.163 [−0.167, −0.160] | decreases, ≥ margin | decreases | confirmed |
+| Agent-only | In-context | −0.173 [−0.176, −0.169] | decreases, ≥ margin | unchanged | not confirmed |
+| Agent-only | RL | −0.045 [−0.047, −0.043] | decreases, ≥ margin | unchanged | not confirmed |
+
+**2 of 6 predictions confirmed.**
+- **The in-context reversal is refuted:** its score significantly
+  decreases under symmetric lag.
+- **The "unchanged" predictions failed for a reason that should have been
+  foreseen.** Lag delays every agent's *learning signal*, not only its view
+  of the opponent. RL's value updates arrive a round late, and the
+  in-context agent's window of opponent moves is a round stale. Both
+  predictions assumed information matters only through context.
+
+**Exploratory, not pre-registered.** Symmetric minus agent-only lag is
++0.145 for in-context, +0.054 for fine-tuning and +0.009 for RL. The
+opponent's stale tracking helps, and helps the most exploitable agent
+most, which is the reversal's mechanism. It is too weak to outweigh the
+agent's own lag. This compares different seeds and assumes the effects
+add.
+
+**The ranking is unchanged:** fine-tuning > RL > in-context in both
+conditions. Scores: symmetric +0.123 / −0.083 / −0.184; agent-only
++0.069 / −0.092 / −0.330. One round of latency hurts every agent and cuts
+fine-tuning's advantage by half or more, but it doesn't change the order.
+
+The noise study runs next, as tagged, with its predictions unchanged.
