@@ -1116,3 +1116,33 @@ fixes k* and q*, and its results are committed. The dry run uses a
 different opponent (M = 7, ε = 0.5) and **prints no numbers**. Then the tag
 `study3b-v1`, one run of the lag conditions, results recorded, then the
 noise conditions.
+
+## Study 3b design check: result (2026-09-28)
+
+`results/study3/observability_design_check.json`. Reference agents only,
+seeds 70000–70099. The code was committed (`964931a`) before the run.
+**Chosen: k\* = 1 and q\* = 0.1. Neither is "minimal perturbation".**
+
+| Δ score vs baseline | Uniform | Always-rock | 20-move counter | 50-move counter | Full-history counter |
+|---|---|---|---|---|---|
+| Lag 1 | 0 | 0 | +0.075 | −0.055 | −0.082 |
+| Lag 2 | 0 | 0 | +0.137 | −0.073 | −0.120 |
+| Lag 3 | 0 | 0 | +0.182 | −0.044 | −0.140 |
+| Lag 5 | 0 | 0 | +0.242 | +0.030 | −0.162 |
+| Noise 0.1 | 0 | +0.009 | +0.039 | −0.029 | +0.002 |
+| Noise 0.2 | 0 | +0.036 | +0.091 | +0.015 | −0.004 |
+| Noise 0.3 | 0 | +0.077 | +0.131 | +0.081 | −0.011 |
+
+- **Lag 1 is not too weak.** It moves the reference counters by 3–4 times
+  the 0.02 bar.
+- **Opposite-signed effects are real at the chosen levels.** At lag 1, the
+  20-move counter gains while the other two lose. This supports per-agent
+  rather than pooled tests.
+- **Sanity:** uniform play is unaffected, and always-rock is unaffected by
+  lag.
+- **Noted, not used:** the 50-move counter's response is not monotonic in
+  the lag level. The rule takes the smallest qualifying level.
+
+The draft's conditions therefore use **agent and opponent lag 1** (lag
+study) and **noise 0.1 on both sides** (noise study), each with an
+agent-only secondary.

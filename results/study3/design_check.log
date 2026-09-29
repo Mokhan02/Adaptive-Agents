@@ -1,0 +1,8 @@
+lag=1: uniform +0.000  always_rock +0.000  freq_w20 +0.075  freq_w50 -0.055  freq_all -0.082  qualifies=True
+lag=2: uniform +0.000  always_rock +0.000  freq_w20 +0.137  freq_w50 -0.073  freq_all -0.120  qualifies=True
+lag=3: uniform +0.000  always_rock +0.000  freq_w20 +0.182  freq_w50 -0.044  freq_all -0.140  qualifies=True
+lag=5: uniform +0.000  always_rock +0.000  freq_w20 +0.242  freq_w50 +0.030  freq_all -0.162  qualifies=True
+noise=0.1: uniform +0.000  always_rock +0.009  freq_w20 +0.039  freq_w50 -0.029  freq_all +0.002  qualifies=True
+noise=0.2: uniform +0.000  always_rock +0.036  freq_w20 +0.091  freq_w50 +0.015  freq_all -0.004  qualifies=True
+noise=0.3: uniform +0.000  always_rock +0.077  freq_w20 +0.131  freq_w50 +0.081  freq_all -0.011  qualifies=True
+chosen: {'lag': {'level': 1, 'minimal_perturbation': False}, 'noise': {'level': 0.1, 'minimal_perturbation': False}}
