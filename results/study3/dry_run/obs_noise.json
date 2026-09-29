@@ -1,0 +1,117 @@
+{
+  "study": "study 3b: noise",
+  "commit": "b7997830fb504636ee0612419b141e76064b1f1b (dry run)",
+  "tag": "study3b-v1",
+  "dry_run": true,
+  "opponent": {
+    "M": 7,
+    "eps": 0.5
+  },
+  "score_window": [
+    858,
+    1158
+  ],
+  "conditions": {
+    "symmetric": {
+      "kwargs": {
+        "agent_noise": 0.1,
+        "opponent_noise": 0.1
+      },
+      "seeds": [
+        69300,
+        69319
+      ],
+      "agents": {
+        "in_context": {
+          "score": -0.11454845293078335,
+          "baseline": -0.10779396236458857,
+          "delta": -0.0067544905661947735,
+          "ci95": [
+            -0.018648417462371756,
+            0.004853161208800536
+          ],
+          "p_holm": 0.2984,
+          "outcome": "unchanged within the margin",
+          "predicted": "increases",
+          "prediction": "not confirmed"
+        },
+        "change_aware": {
+          "score": -0.038283337142961796,
+          "baseline": -0.04535972532350284,
+          "delta": 0.007076388180541043,
+          "ci95": [
+            -0.0024577317672008995,
+            0.016576522824482992
+          ],
+          "p_holm": 0.2984,
+          "outcome": "unchanged within the margin",
+          "predicted": "unchanged within the margin",
+          "prediction": "confirmed"
+        },
+        "fine_tune": {
+          "score": 0.014218600484679272,
+          "baseline": 0.02248310170633207,
+          "delta": -0.008264501221652799,
+          "ci95": [
+            -0.014720723600249062,
+            -0.002000906816440199
+          ],
+          "p_holm": 0.0258,
+          "outcome": "decreases by less than the margin",
+          "predicted": "decreases",
+          "prediction": "confirmed"
+        }
+      }
+    },
+    "agent_only": {
+      "kwargs": {
+        "agent_noise": 0.1
+      },
+      "seeds": [
+        69300,
+        69319
+      ],
+      "agents": {
+        "in_context": {
+          "score": -0.11064571913475554,
+          "baseline": -0.10779396236458857,
+          "delta": -0.002851756770166969,
+          "ci95": [
+            -0.013747182082271462,
+            0.00822514385109298
+          ],
+          "p_holm": 1.0,
+          "outcome": "unchanged within the margin",
+          "predicted": "unchanged within the margin",
+          "prediction": "confirmed"
+        },
+        "change_aware": {
+          "score": -0.04448519895561283,
+          "baseline": -0.04535972532350284,
+          "delta": 0.0008745263678900106,
+          "ci95": [
+            -0.009786641593985757,
+            0.011413508424826394
+          ],
+          "p_holm": 1.0,
+          "outcome": "unchanged within the margin",
+          "predicted": "unchanged within the margin",
+          "prediction": "confirmed"
+        },
+        "fine_tune": {
+          "score": 0.016904026904172767,
+          "baseline": 0.02248310170633207,
+          "delta": -0.005579074802159304,
+          "ci95": [
+            -0.012905788055653839,
+            0.0014856111477274335
+          ],
+          "p_holm": 0.36719999999999997,
+          "outcome": "unchanged within the margin",
+          "predicted": "decreases",
+          "prediction": "not confirmed"
+        }
+      }
+    }
+  }
+}

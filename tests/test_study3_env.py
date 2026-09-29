@@ -89,3 +89,17 @@ def test_bridge_opponent_is_scripted_then_fictitious_play():
     log = run_episode(ConstantAgent(ROCK), BridgeOpponent(window=5, eps=0.1, switch_at=50), 100, seed=0)
     np.testing.assert_allclose(log.expected_rewards[:50], STRATEGY_A @ np.array([0, -1, 1]))  # rock vs A
     np.testing.assert_allclose(log.expected_rewards[50:], -0.9)  # window already full at the switch
+
+
+def test_study3b_outcomes_separate_small_changes_from_no_change():
+    import sys
+
+    sys.path.insert(0, "scripts")
+    from study3 import change_outcome, prediction_status
+
+    assert change_outcome(0.01, [0.004, 0.016], 0.01) == "increases by less than the margin"
+    assert change_outcome(0.001, [-0.01, 0.012], 0.6) == "unchanged within the margin"
+    assert change_outcome(-0.05, [-0.06, -0.04], 0.001) == "decreases by at least the margin"
+    assert prediction_status("increases", "increases by less than the margin") == "confirmed"
+    assert prediction_status("unchanged within the margin", "increases by less than the margin") == "not confirmed"
+    assert prediction_status("decreases", "inconclusive") == "not confirmed (inconclusive)"

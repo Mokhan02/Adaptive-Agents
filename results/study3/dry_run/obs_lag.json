@@ -1,0 +1,117 @@
+{
+  "study": "study 3b: lag",
+  "commit": "b7997830fb504636ee0612419b141e76064b1f1b (dry run)",
+  "tag": "study3b-v1",
+  "dry_run": true,
+  "opponent": {
+    "M": 7,
+    "eps": 0.5
+  },
+  "score_window": [
+    858,
+    1158
+  ],
+  "conditions": {
+    "symmetric": {
+      "kwargs": {
+        "agent_lag": 1,
+        "opponent_lag": 1
+      },
+      "seeds": [
+        69300,
+        69319
+      ],
+      "agents": {
+        "in_context": {
+          "score": -0.11397239976696409,
+          "baseline": -0.10779396236458857,
+          "delta": -0.006178437402375517,
+          "ci95": [
+            -0.01696603439236974,
+            0.004532058342662335
+          ],
+          "p_holm": 0.2682,
+          "outcome": "unchanged within the margin",
+          "predicted": "increases",
+          "prediction": "not confirmed"
+        },
+        "change_aware": {
+          "score": -0.05531253379433178,
+          "baseline": -0.04535972532350284,
+          "delta": -0.009952808470828939,
+          "ci95": [
+            -0.019482922470940668,
+            -0.0003717652746797673
+          ],
+          "p_holm": 0.088,
+          "outcome": "unchanged within the margin",
+          "predicted": "unchanged within the margin",
+          "prediction": "confirmed"
+        },
+        "fine_tune": {
+          "score": 0.009439597605153172,
+          "baseline": 0.02248310170633207,
+          "delta": -0.0130435041011789,
+          "ci95": [
+            -0.020065780877549323,
+            -0.00631733049658287
+          ],
+          "p_holm": 0.0006000000000000001,
+          "outcome": "decreases by less than the margin",
+          "predicted": "decreases",
+          "prediction": "confirmed"
+        }
+      }
+    },
+    "agent_only": {
+      "kwargs": {
+        "agent_lag": 1
+      },
+      "seeds": [
+        69300,
+        69319
+      ],
+      "agents": {
+        "in_context": {
+          "score": -0.1487291497791979,
+          "baseline": -0.10779396236458857,
+          "delta": -0.04093518741460933,
+          "ci95": [
+            -0.05283697185582163,
+            -0.028496212527985964
+          ],
+          "p_holm": 0.00030000000000000003,
+          "outcome": "decreases by at least the margin",
+          "predicted": "unchanged within the margin",
+          "prediction": "not confirmed"
+        },
+        "change_aware": {
+          "score": -0.05974221257692673,
+          "baseline": -0.04535972532350284,
+          "delta": -0.014382487253423892,
+          "ci95": [
+            -0.023976703393673915,
+            -0.0046472211147120905
+          ],
+          "p_holm": 0.0044,
+          "outcome": "decreases by less than the margin",
+          "predicted": "unchanged within the margin",
+          "prediction": "not confirmed"
+        },
+        "fine_tune": {
+          "score": 0.003504094479261683,
+          "baseline": 0.02248310170633207,
+          "delta": -0.01897900722707039,
+          "ci95": [
+            -0.025235528320824024,
+            -0.012857655435753764
+          ],
+          "p_holm": 0.00030000000000000003,
+          "outcome": "decreases by less than the margin",
+          "predicted": "decreases",
+          "prediction": "confirmed"
+        }
+      }
+    }
+  }
+}

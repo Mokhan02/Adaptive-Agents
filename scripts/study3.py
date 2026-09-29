@@ -368,9 +368,143 @@ def design_check() -> None:
     print("chosen:", chosen)
 
 
+TAG_3B = "study3b-v1"
+OBS_STUDIES = {
+    "lag": {"symmetric": (dict(agent_lag=1, opponent_lag=1), range(62000, 62400)),
+            "agent_only": (dict(agent_lag=1), range(63000, 63400))},
+    "noise": {"symmetric": (dict(agent_noise=0.1, opponent_noise=0.1), range(64000, 64400)),
+              "agent_only": (dict(agent_noise=0.1), range(65000, 65400))},
+}
+PREDICTIONS = {  # per condition kind: agent -> predicted category stem
+    "symmetric": {"fine_tune": "decreases", "in_context": "increases", "change_aware": "unchanged within the margin"},
+    "agent_only": {"fine_tune": "decreases", "in_context": "unchanged within the margin",
+                   "change_aware": "unchanged within the margin"},
+}
+
+
+def _obs_agent_run(name: str, window: int, eps: float, n_rounds: int, kwargs: dict, seed: int) -> dict:
+    import torch
+
+    from regime.analysis import make_agent
+    from regime.env import FictitiousPlayOpponent
+    from regime.runner import run_episode
+
+    torch.set_num_threads(1)
+    log = run_episode(make_agent(name), FictitiousPlayOpponent(window, eps), n_rounds, seed, **kwargs)
+    return dict(expected=log.expected_rewards, actions=log.agent_actions, opp=log.opp_actions)
+
+
+def change_outcome(delta: float, ci, p_holm: float) -> str:
+    """Study 3b categories (margin 0.02). "increases/decreases by less than the margin" is a distinct
+    finding from "unchanged within the margin"."""
+    lo, hi = ci
+    if p_holm < 0.05:
+        direction = "increases" if delta > 0 else "decreases"
+        return f"{direction} by {'at least' if abs(delta) >= s3.SESOI else 'less than'} the margin"
+    if -s3.SESOI < lo and hi < s3.SESOI:
+        return "unchanged within the margin"
+    return "inconclusive"
+
+
+def prediction_status(predicted: str, outcome: str) -> str:
+    if outcome == "inconclusive":
+        return "not confirmed (inconclusive)"
+    return "confirmed" if outcome.startswith(predicted) else "not confirmed"
+
+
+def obs_run(study: str, dry_run: bool) -> None:
+    """Study 3b, one study (lag or noise). ANALYSIS_PLAN.md, "Study 3b"."""
+    from regime.early_detection import holm
+
+    cal = json.loads((OUT / "calibration.json").read_text())
+    s3res = json.loads((OUT / "results.json").read_text())
+    T_w, n_rounds = cal["T_w"], cal["n_rounds"]
+    out = OUT / ("dry_run" if dry_run else "") / f"obs_{study}.json"
+    progress = OUT / ("dry_run" if dry_run else "") / f"obs_{study}_progress.log"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    if dry_run:
+        commit = git("rev-parse", "HEAD") + " (dry run)"
+        window, eps = s3.DRY_RUN["window"], s3.DRY_RUN["eps"]
+    else:
+        if out.exists():
+            raise SystemExit(f"{out} exists: runs once")
+        if git("status", "--porcelain", "--untracked-files=no"):
+            raise SystemExit("working tree has uncommitted changes")
+        commit = git("rev-parse", "HEAD")
+        if TAG_3B not in git("tag", "--points-at", commit).split():
+            raise SystemExit(f"HEAD is not tagged {TAG_3B}")
+        window, eps = cal["M"], s3.EPS
+
+    def log(msg):
+        with open(progress, "a") as f:
+            f.write(f"{time.strftime('%H:%M:%S')} {msg}\n")
+        print(msg if not dry_run or not any(c.isdigit() for c in msg.split(":")[-1]) else msg.split(":")[0], flush=True)
+
+    def runs_for(name, kwargs, seeds, w=window, e=eps):
+        with ProcessPoolExecutor(os.cpu_count()) as pool:
+            return list(pool.map(partial(_obs_agent_run, name, w, e, n_rounds, kwargs), seeds, chunksize=5))
+
+    # Baseline: study 3's primary runs, which must reproduce bit-for-bit. Dry runs exercise the trajectory
+    # check on 3 seeds only (study 3's own, already published) and use the dry opponent for everything else.
+    baseline_path = OUT / "baseline_rerun.json"
+    base = {}
+    for name in AGENTS:
+        if dry_run:
+            check = runs_for(name, {}, range(60000, 60003), cal["M"], s3.EPS)
+            for i, ex in enumerate(s3res["example_trajectories"][name]):
+                assert check[i]["actions"][T_w : T_w + 60].tolist() == ex["actions"], "baseline trajectory differs"
+            base[name] = np.array([r["expected"][T_w:].mean() for r in runs_for(name, {}, range(69200, 69220))])
+            continue
+        if baseline_path.exists():
+            base[name] = np.array(json.loads(baseline_path.read_text())[name])
+            continue
+        log(f"baseline {name}: rerunning study 3 seeds")
+        runs = runs_for(name, {}, range(s3.TEST_SEED_BASE, s3.TEST_SEED_BASE + cal["N"]))
+        for i, ex in enumerate(s3res["example_trajectories"][name]):
+            assert runs[i]["actions"][T_w : T_w + 60].tolist() == ex["actions"], "baseline trajectory differs"
+            assert runs[i]["opp"][T_w : T_w + 60].tolist() == ex["opponent"], "baseline opponent trajectory differs"
+        base[name] = np.array([r["expected"][T_w:].mean() for r in runs])
+        assert float(base[name].mean()) == s3res["H3"][name]["mean"], "baseline mean is not bit-identical"
+        log(f"baseline {name}: bit-identical to study 3")
+    if not dry_run and not baseline_path.exists():
+        baseline_path.write_text(json.dumps({a: v.tolist() for a, v in base.items()}))
+
+    results = dict(study=f"study 3b: {study}", commit=commit, tag=TAG_3B, dry_run=dry_run,
+                   opponent=dict(M=window, eps=eps), score_window=[T_w, n_rounds], conditions={})
+    for cond, (kwargs, seeds) in OBS_STUDIES[study].items():
+        seeds = range(69300, 69320) if dry_run else seeds
+        rows, ps = {}, []
+        for i, name in enumerate(AGENTS):
+            log(f"{study}/{cond} {name}: running {len(seeds)} seeds")
+            sc = np.array([r["expected"][T_w:].mean() for r in runs_for(name, kwargs, seeds)])
+            rng = np.random.default_rng(100 + i)
+            d = rng.choice(sc, (10_000, len(sc))).mean(1) - rng.choice(base[name], (10_000, len(base[name]))).mean(1)
+            delta = float(sc.mean() - base[name].mean())
+            ps.append(float(max(min(1.0, 2 * min((d <= 0).mean(), (d >= 0).mean())), 1e-4)))
+            rows[name] = dict(score=float(sc.mean()), baseline=float(base[name].mean()), delta=delta,
+                              ci95=[float(np.percentile(d, 2.5)), float(np.percentile(d, 97.5))])
+        for name, ph in zip(AGENTS, holm(ps)):
+            r = rows[name]
+            r["p_holm"] = ph
+            r["outcome"] = change_outcome(r["delta"], r["ci95"], ph)
+            r["predicted"] = PREDICTIONS[cond][name]
+            r["prediction"] = prediction_status(r["predicted"], r["outcome"])
+        results["conditions"][cond] = dict(kwargs=kwargs, seeds=[seeds.start, seeds.stop - 1], agents=rows)
+    out.write_text(json.dumps(results, indent=2))
+    if dry_run:
+        print("dry run completed; outputs written (numbers not shown)")
+    else:
+        log(f"saved {out} (commit {commit})")
+        for cond, c in results["conditions"].items():
+            for name, r in c["agents"].items():
+                log(f"{cond:<10} {name:<13} delta {r['delta']:+.4f} {r['ci95']}  p_holm {r['p_holm']:.3g}  "
+                    f"{r['outcome']}  [predicted: {r['predicted']} -> {r['prediction']}]")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("which", choices=["calibrate", "run", "bridge", "design-check"])
+    ap.add_argument("which", choices=["calibrate", "run", "bridge", "design-check", "obs-run"])
+    ap.add_argument("--study", choices=["lag", "noise"])
     ap.add_argument("--smoke", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
@@ -380,6 +514,8 @@ def main() -> None:
         bridge(args.smoke)
     elif args.which == "design-check":
         design_check()
+    elif args.which == "obs-run":
+        obs_run(args.study, args.dry_run)
     else:
         calibrate()
 
