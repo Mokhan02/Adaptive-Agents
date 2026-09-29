@@ -1180,8 +1180,42 @@ agent's own lag. This compares different seeds and assumes the effects
 add.
 
 **The ranking is unchanged:** fine-tuning > RL > in-context in both
-conditions. Scores: symmetric +0.123 / −0.083 / −0.184; agent-only
-+0.069 / −0.092 / −0.330. One round of latency hurts every agent and cuts
+conditions. Scores (from the results file): symmetric +0.123 / −0.084 / −0.184;
+agent-only +0.069 / −0.093 / −0.329. One round of latency hurts every agent and cuts
 fine-tuning's advantage by half or more, but it doesn't change the order.
 
 The noise study runs next, as tagged, with its predictions unchanged.
+
+## Study 3b noise study: results (2026-09-28)
+
+`results/study3/obs_noise.json`, committed unedited (`f1aeebc`). It was run
+from the tag `study3b-v1` (`de8decf`) in a worktree, because `main` had moved
+on with the recorded lag results. The file records the tagged commit.
+Noise q = 0.1, an effective corruption rate of 6.7%.
+
+| Condition | Agent | Δ score [95% CI] | Outcome | Predicted | Status |
+|---|---|---|---|---|---|
+| Symmetric | Fine-tuning | −0.051 [−0.055, −0.047] | decreases, ≥ margin | decreases | confirmed |
+| Symmetric | In-context | −0.002 [−0.005, +0.001] | unchanged within the margin | increases | not confirmed |
+| Symmetric | RL | +0.008 [+0.006, +0.010] | increases, < margin | unchanged | not confirmed |
+| Agent-only | Fine-tuning | −0.046 [−0.050, −0.042] | decreases, ≥ margin | decreases | confirmed |
+| Agent-only | In-context | −0.016 [−0.019, −0.013] | decreases, < margin | unchanged | not confirmed |
+| Agent-only | RL | +0.002 [−0.001, +0.004] | unchanged within the margin | unchanged | confirmed |
+
+**3 of 6 predictions confirmed.**
+- **Fine-tuning is the only agent that noise clearly hurts,** by about
+  0.05 in both conditions.
+- **The in-context reversal is absent again,** but as "unchanged within the
+  margin", which is a different outcome from lag's decrease.
+- **Two results are significant but below the margin** (RL +0.008
+  symmetric, in-context −0.016 agent-only). They are reported as small real
+  changes, not as absence of effect and not as meaningful effects.
+- **The ranking is unchanged** (fine-tuning > RL > in-context) in both
+  conditions.
+
+**Study 3b overall (lag and noise):** 5 of 12 directional predictions
+confirmed. Fine-tuning's predicted degradation held in all four conditions.
+The in-context reversal failed in both studies. The "unchanged" predictions
+mostly failed under lag, for the reason noted above (lag delays every
+agent's learning signal). The ranking fine-tuning > RL > in-context held in
+every condition.

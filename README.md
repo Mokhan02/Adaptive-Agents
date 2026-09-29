@@ -64,8 +64,10 @@ committed unedited.
    last in study 1, now exploits the opponent (+0.23 per round). The
    in-context agent, first on total regret in study 1, is exploited most
    (−0.16). As pre-registered, predictability (the entropy of each agent's
-   own recent play) orders the agents the same way as their scores.
-   [Details](#study-3-a-reactive-opponent).
+   own recent play) orders the agents the same way as their scores. The
+   ranking survives one round of latency and 10% observation noise, though
+   most of our predictions about *how* each agent would respond were
+   wrong (5 of 12 confirmed). [Details](#study-3-a-reactive-opponent).
 
 Every interpretation rule was fixed before its data existed. One verdict
 landed exactly on an ambiguous endpoint of such a rule and is reported as
@@ -334,6 +336,46 @@ per phase, never pooled:
 **Also on record:** a dry run on a different opponent from the same
 family, run before the tag, previewed this direction. It is disclosed in
 the plan, and nothing was adjusted in response.
+
+### Study 3b: latency and observation noise
+
+This addresses the outside objection that the setup had "no latency, no
+noise". It uses the same frozen agents and the same reactive opponent, with
+one round of observation lag, or 10% observation noise (a random move
+replaces the observed one, so 6.7% of observations are actually wrong).
+- **Conditions:** symmetric (both sides affected) and agent-only.
+- **Levels** were chosen by a rule on reference agents only.
+- **Directional predictions** were stated per agent before any run
+  (`study3b-v1`). The baseline rerun of study 3 was bit-identical.
+- **Fine-tuning needed a fix first.** Its update originally paired a
+  delayed reward with the wrong input. It was fixed to use the input the
+  action was chosen from, so lag degrades information, not the
+  implementation.
+
+| Score (Nash = 0) | Fine-tuning | RL | In-context |
+|---|---|---|---|
+| No lag, no noise (study 3) | +0.232 | −0.047 | −0.157 |
+| Lag 1, symmetric | +0.123 | −0.084 | −0.184 |
+| Lag 1, agent only | +0.069 | −0.093 | −0.329 |
+| Noise, symmetric | +0.181 | −0.039 | −0.158 |
+| Noise, agent only | +0.186 | −0.046 | −0.173 |
+
+- **The ranking holds under every condition.** Latency and noise shrink
+  fine-tuning's advantage, which is halved or more under lag, but never
+  reverse the order.
+- **Only 5 of 12 predictions were confirmed.** Fine-tuning's predicted
+  degradation held in all four conditions. The predicted in-context
+  *reversal* (a stale opponent should exploit the most exploitable agent
+  less) failed in both studies. It significantly *decreases* under lag
+  and is unchanged under noise. Most "unchanged" predictions failed under
+  lag for a reason we should have foreseen: lag delays every agent's
+  learning signal, not only its view of the opponent.
+- **Two noise effects are significant but below the 0.02 margin** (RL
+  +0.008, in-context −0.016 agent-only). They are reported as small real
+  changes, not as absence of effect.
+- *Exploratory:* every agent does better under symmetric lag than under
+  agent-only lag. That fits the reversal's mechanism (the opponent's stale
+  tracking helps), but it is too weak to flip the sign.
 
 ## How it was done
 
