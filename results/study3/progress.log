@@ -1,0 +1,14 @@
+19:52:52 running in_context: 400 seeds x 1158 rounds (opponent M=5, eps=0.1)
+20:01:26 done in_context
+20:01:26 running change_aware: 400 seeds x 1158 rounds (opponent M=5, eps=0.1)
+20:03:26 done change_aware
+20:03:26 running fine_tune: 400 seeds x 1158 rounds (opponent M=5, eps=0.1)
+20:05:43 done fine_tune
+20:05:57 saved results/study3/results.json (commit 5421954bfd2f1d9f8aae7675dee83063bce933ae)
+20:05:57 in_context    score -0.1566 [-0.1588038926401353, -0.15450816991893612]  exploited  entropy 0.560
+20:05:57 change_aware  score -0.0474 [-0.048961989828180896, -0.0458749248415378]  exploited  entropy 0.780
+20:05:57 fine_tune     score +0.2324 [0.22936831234335456, 0.23536293153542615]  exploits the opponent  entropy 0.865
+20:05:57 in_context - change_aware    diff -0.1092 [-0.11180094008361195, -0.10654155749047109]  p_holm 0.0003  change_aware above in_context by at least the effect of interest
+20:05:57 in_context - fine_tune       diff -0.3890 [-0.3926512428036686, -0.3853580705696228]  p_holm 0.0003  fine_tune above in_context by at least the effect of interest
+20:05:57 change_aware - fine_tune     diff -0.2798 [-0.2831420417312314, -0.2764776071484906]  p_holm 0.0003  fine_tune above change_aware by at least the effect of interest
+20:05:57 H1: confirmed (ordinal check on n = 3, not a statistical test)  ranking changes: {'study1_preregistered_excess_regret': {'changed': True, 'contradicted_pairs': ['in_context vs fine_tune', 'change_aware vs fine_tune']}, 'study1_exploratory_total_regret': {'changed': True, 'contradicted_pairs': ['in_context vs change_aware', 'in_context vs fine_tune', 'change_aware vs fine_tune']}}
