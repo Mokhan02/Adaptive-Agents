@@ -1,0 +1,13 @@
+22:10:31 noise/symmetric in_context: running 400 seeds
+22:19:18 noise/symmetric change_aware: running 400 seeds
+22:20:49 noise/symmetric fine_tune: running 400 seeds
+22:23:11 noise/agent_only in_context: running 400 seeds
+22:31:37 noise/agent_only change_aware: running 400 seeds
+22:33:08 noise/agent_only fine_tune: running 400 seeds
+22:35:34 saved results/study3/obs_noise.json (commit de8decf43d94901f8a233c29bcbe945baea03312)
+22:35:34 symmetric  in_context    delta -0.0017 [-0.004788331187530856, 0.0014688650198054353]  p_holm 0.298  unchanged within the margin  [predicted: increases -> not confirmed]
+22:35:34 symmetric  change_aware  delta +0.0081 [0.005928644864827978, 0.010264092889243067]  p_holm 0.0003  increases by less than the margin  [predicted: unchanged within the margin -> not confirmed]
+22:35:34 symmetric  fine_tune     delta -0.0511 [-0.05516520408796794, -0.04699365376492268]  p_holm 0.0003  decreases by at least the margin  [predicted: decreases -> confirmed]
+22:35:34 agent_only in_context    delta -0.0161 [-0.01931640825394273, -0.01289826546368162]  p_holm 0.0003  decreases by less than the margin  [predicted: unchanged within the margin -> not confirmed]
+22:35:34 agent_only change_aware  delta +0.0015 [-0.000697402375552042, 0.003660502422814688]  p_holm 0.18  unchanged within the margin  [predicted: unchanged within the margin -> confirmed]
+22:35:34 agent_only fine_tune     delta -0.0463 [-0.05033178970620632, -0.04220812287054994]  p_holm 0.0003  decreases by at least the margin  [predicted: decreases -> confirmed]
