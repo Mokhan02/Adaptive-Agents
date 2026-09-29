@@ -1262,3 +1262,14 @@ values per agent. Outcomes use the study 3b categories (margin 0.02).
   tracking.
 - This is exploratory: whichever reading it supports is evidence, not proof
   of mechanism.
+
+**Addendum (2026-09-28, before any in-context M-scaling run): the
+in-context agent is added,** at the user's request, with the same design
+(M ∈ {10, 20, 50}, seeds 66000–66399, changes from its M = 5 baseline,
+Holm across the 3 M values, margin 0.02). It is exploratory and two-sided.
+It reads the opponent's moves but never updates, so a "slower opponent"
+could make its predictions easier, while its sharp play stays easy for the
+opponent to read. No direction is predicted. Its difference in
+differences against RL uses RL rerun on the same seeds, and the rerun must
+equal the first M-scaling run's RL means exactly (asserted). It runs after
+the fine-tuning and RL runs finish, as `scripts/mscale_icl.py`.
