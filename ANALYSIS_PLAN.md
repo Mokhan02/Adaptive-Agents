@@ -1273,3 +1273,28 @@ opponent to read. No direction is predicted. Its difference in
 differences against RL uses RL rerun on the same seeds, and the rerun must
 equal the first M-scaling run's RL means exactly (asserted). It runs after
 the fine-tuning and RL runs finish, as `scripts/mscale_icl.py`.
+
+### M-scaling: fine-tuning and RL results (2026-09-29; exploratory)
+
+`results/study3/mscale.json`. The code was committed (`43b07f9`) before the
+run. The run took about 2.5 hours rather than the estimated 12 minutes; the
+progress log's gaps suggest the laptop slept.
+
+| Δ score vs M = 5 | M = 10 | M = 20 | M = 50 |
+|---|---|---|---|
+| Fine-tuning (M = 5: +0.232) | +0.170 | +0.169 | +0.288 |
+| RL (M = 5: −0.047) | +0.043 | +0.111 | +0.283 |
+| Fine-tuning − RL (95% CI) | +0.128 [0.122, 0.133] | +0.058 [0.050, 0.066] | +0.005 [−0.006, 0.015] |
+
+All six changes are "increases by at least the margin", with Holm p at the
+floor.
+- **"Harder to track" is refuted:** fine-tuning never decreases.
+- **The primary reading is formally "slower opponent" (M = 50), but the
+  pre-registered difference-in-differences qualifies it.** At M = 50, RL
+  gains as much as fine-tuning (+0.005, CI includes 0), so that gain is the
+  opponent weakening overall, not fine-tuning's tracking. M = 50 is
+  therefore not counted as support for a fine-tuning mechanism.
+- **The fine-tuning-specific gain appears at intermediate windows only**
+  (+0.128 at M = 10, +0.058 at M = 20). That is consistent with a slower,
+  more predictable opponent helping the one agent that learns a contingency
+  during play, until the opponent is weak enough for any agent to exploit.
