@@ -949,3 +949,34 @@ has not been run. Future dry runs should suppress their summary numbers.
   reactive opponent in pretraining.
 - *The dry run previewed this direction* (disclosed above); nothing was
   adjusted.
+
+## Study 3, bridge condition (b) (2026-09-28, defined before running; exploratory)
+
+**Design.** For rounds [0, 200) the opponent plays study 1's Strategy A,
+(0.6, 0.2, 0.2). From round 200 it becomes the study 3 fictitious-play
+opponent (M = 5, ε = 0.1). The fictitious-play component observes the
+agent's moves from round 0, so its window is full at the switch. Episodes
+are 200 + 1,158 = 1,358 rounds. The frozen agents are unchanged; seeds are
+61000–61399 (400 per agent).
+
+**Measured per phase, never pooled:**
+- **Scripted phase,** rounds [50, 200): mean expected reward and mean
+  trailing-5 entropy.
+- **Early reactive phase,** rounds [200, 400): mean expected reward. This is
+  descriptive: how each agent fares in its first 200 rounds against the
+  reactive opponent.
+- **Settled reactive phase,** rounds [1058, 1358): study 3's warm-up (858
+  rounds) counted from the switch. Mean expected reward, mean trailing-5
+  entropy, and the cycle-period diagnostic.
+- **Comparison with the primary study 3:** the settled reactive score minus
+  the primary score for the same agent, with a bootstrap 95% CI (unpaired,
+  10,000 resamples). This shows whether arriving from a scripted regime
+  changes long-run play against the reactive opponent.
+
+**Status.** Exploratory: no hypothesis tests, no decision rule, no ranking
+claim. The primary design (a) remains the study's result. No recovery time
+is computed, since there is no reference level to recover to.
+
+**Process.** The code is committed before the run. The smoke test (4 seeds,
+M = 7, ε = 0.5) prints only whether it completed, not its numbers. The
+results are committed unedited, with the commit hash recorded.

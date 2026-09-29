@@ -91,3 +91,30 @@ def cycle_period(br_actions: np.ndarray, lo: int = 2, hi: int = 200, min_peak: f
         if ac[k - 1] > min_peak and ac[k - 1] >= ac[k - 2] and ac[k - 1] >= ac[k]:
             return k
     return None
+
+
+BRIDGE = dict(switch_at=200, seeds=range(61000, 61400), scripted=(50, 200), early=(200, 400))
+
+
+class BridgeOpponent:
+    """Bridge condition (b): study 1's Strategy A for `switch_at` rounds, then fictitious play.
+    The fictitious-play component observes the agent from round 0."""
+
+    def __init__(self, window: int, eps: float, switch_at: int = 200):
+        from regime.env import STRATEGY_A, FictitiousPlayOpponent
+
+        self.scripted = np.asarray(STRATEGY_A, dtype=float)
+        self.fp = FictitiousPlayOpponent(window, eps)
+        self.switch_at = self.switch_end = switch_at
+
+    def reset(self) -> None:
+        self.fp.reset()
+
+    def observe_agent(self, action: int) -> None:
+        self.fp.observe_agent(action)
+
+    def distribution(self, t: int) -> np.ndarray:
+        return self.scripted if t < self.switch_at else self.fp.distribution(t)
+
+    def act(self, t: int, rng: np.random.Generator) -> int:
+        return int(rng.choice(3, p=self.distribution(t)))

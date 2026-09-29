@@ -252,13 +252,77 @@ def run(dry_run: bool) -> None:
     log(f"H1: {h1['status']}  ranking changes: {changes}")
 
 
+def _bridge_run(name: str, window: int, eps: float, n_rounds: int, seed: int) -> dict:
+    import torch
+
+    from regime.analysis import make_agent
+    from regime.runner import run_episode
+
+    torch.set_num_threads(1)
+    log = run_episode(make_agent(name), s3.BridgeOpponent(window, eps, s3.BRIDGE["switch_at"]), n_rounds, seed)
+    return dict(expected=log.expected_rewards, actions=log.agent_actions)
+
+
+def bridge(smoke: bool) -> None:
+    """Exploratory bridge condition (b); ANALYSIS_PLAN.md. Per phase, never pooled."""
+    cal = json.loads((OUT / "calibration.json").read_text())
+    sw = s3.BRIDGE["switch_at"]
+    n_rounds = sw + cal["n_rounds"]
+    settled = (sw + cal["T_w"], n_rounds)
+    if smoke:
+        window, eps, seeds, out = 7, 0.5, range(69100, 69104), OUT / "bridge_smoke.json"
+    else:
+        if git("status", "--porcelain", "--untracked-files=no"):
+            raise SystemExit("working tree has uncommitted changes")
+        window, eps, seeds, out = cal["M"], s3.EPS, s3.BRIDGE["seeds"], OUT / "bridge.json"
+        if out.exists():
+            raise SystemExit(f"{out} exists")
+    commit = git("rev-parse", "HEAD")
+    primary = json.loads((OUT / "results.json").read_text()) if not smoke else None
+    res = {}
+    for i, name in enumerate(AGENTS):
+        with ProcessPoolExecutor(os.cpu_count()) as pool:
+            runs = list(pool.map(partial(_bridge_run, name, window, eps, n_rounds), seeds, chunksize=5))
+        def mean_over(key, lo, hi):
+            return np.array([r[key][lo:hi].mean() for r in runs])
+        ent = lambda lo, hi: float(np.mean([s3.trailing_entropy(r["actions"], window)[lo:hi].mean() for r in runs]))
+        settled_scores = mean_over("expected", *settled)
+        row = dict(
+            scripted_score=float(mean_over("expected", *s3.BRIDGE["scripted"]).mean()),
+            scripted_entropy=ent(*s3.BRIDGE["scripted"]),
+            early_reactive_score=float(mean_over("expected", *s3.BRIDGE["early"]).mean()),
+            settled_reactive_score=float(settled_scores.mean()),
+            settled_reactive_entropy=ent(*settled),
+            settled_cycle_period_median=None,
+        )
+        periods = [s3.cycle_period(replay_best_responses(r["actions"], window)[settled[0]:]) for r in runs]
+        found = [p for p in periods if p is not None]
+        row["settled_cycle_period_median"] = float(np.median(found)) if found else None
+        row["settled_cycle_none_count"] = len(periods) - len(found)
+        if primary:
+            base = primary["H3"][name]["mean"]
+            # unpaired bootstrap of the bridge mean; the primary's CI is reported alongside
+            boots = np.random.default_rng(i).choice(settled_scores, size=(10_000, len(settled_scores))).mean(1)
+            row["settled_minus_primary"] = float(settled_scores.mean() - base)
+            row["settled_minus_primary_ci95_bridge_side"] = [float(np.percentile(boots, 2.5) - base), float(np.percentile(boots, 97.5) - base)]
+            row["primary_ci95"] = primary["H3"][name]["ci95"]
+        res[name] = row
+    out.write_text(json.dumps(dict(label="exploratory (bridge condition b)", commit=commit, smoke=smoke,
+                                   opponent=dict(M=window, eps=eps, switch_at=sw), n_rounds=n_rounds,
+                                   settled_window=list(settled), seeds=[seeds.start, seeds.stop - 1], agents=res), indent=2))
+    print("smoke test completed; outputs written (numbers not shown)" if smoke else f"saved {out} (commit {commit})")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("which", choices=["calibrate", "run"])
+    ap.add_argument("which", choices=["calibrate", "run", "bridge"])
+    ap.add_argument("--smoke", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
     if args.which == "run":
         run(args.dry_run)
+    elif args.which == "bridge":
+        bridge(args.smoke)
     else:
         calibrate()
 

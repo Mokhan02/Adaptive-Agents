@@ -80,3 +80,12 @@ def test_pair_outcome_names_the_agent_above():
     assert pair_outcome("x", "y", 0.01, [0.005, 0.015], 0.01) == "x above y by less than the effect of interest"
     assert pair_outcome("x", "y", 0.001, [-0.01, 0.012], 0.5) == "equivalent within the margin"
     assert pair_outcome("x", "y", 0.01, [-0.01, 0.03], 0.5) == "inconclusive"
+
+
+def test_bridge_opponent_is_scripted_then_fictitious_play():
+    from regime.env import STRATEGY_A
+    from regime.study3 import BridgeOpponent
+
+    log = run_episode(ConstantAgent(ROCK), BridgeOpponent(window=5, eps=0.1, switch_at=50), 100, seed=0)
+    np.testing.assert_allclose(log.expected_rewards[:50], STRATEGY_A @ np.array([0, -1, 1]))  # rock vs A
+    np.testing.assert_allclose(log.expected_rewards[50:], -0.9)  # window already full at the switch
