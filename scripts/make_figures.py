@@ -273,6 +273,53 @@ def fig_study3() -> None:
     savefig(fig, "7_study3.png")
 
 
+def fig_study3_robustness_and_mscale() -> None:
+    """Study 3b (confirmatory) and M-scaling (exploratory), labeled as such in each panel's title."""
+    s3r = load("results/study3/results.json")["H3"]
+    lag = load("results/study3/obs_lag.json")["conditions"]
+    noise = load("results/study3/obs_noise.json")["conditions"]
+    ms = load("results/study3/mscale.json")["agents"]
+    mi = load("results/study3/mscale_in_context.json")["by_M"]
+    order = ["fine_tune", "change_aware", "in_context"]
+    fig, (a, b) = plt.subplots(1, 2, figsize=(12.5, 4.4), gridspec_kw=dict(width_ratios=[1.15, 1]))
+
+    conds = [("none\n(study 3)", None), ("lag,\nsymmetric", lag["symmetric"]), ("lag,\nagent only", lag["agent_only"]),
+             ("noise,\nsymmetric", noise["symmetric"]), ("noise,\nagent only", noise["agent_only"])]
+    x = np.arange(len(conds))
+    # Categorical conditions: dots, not lines (no continuum between them)
+    for k, ag in enumerate(order):
+        ys = [s3r[ag]["mean"] if c is None else c["agents"][ag]["score"] for _, c in conds]
+        a.plot(x + (k - 1) * 0.12, ys, "o", color=AGENT_COLOR[ag], markersize=8, markeredgecolor=SURFACE,
+               markeredgewidth=1.5)
+        a.annotate(AGENT_LABEL[ag], (x[0] - 0.12, ys[0]), xytext=(-6, 0), textcoords="offset points",
+                   ha="right", va="center", fontsize=8.5, color=INK_2)
+    a.axhline(0, color=INK_2, linewidth=1, linestyle=":")
+    a.set_xticks(x, [c for c, _ in conds], fontsize=8.5)
+    a.set_xlim(-1.4, len(conds) - 0.5)
+    a.grid(axis="x", visible=False)
+    a.set(ylabel="score (Nash = 0)", title="Latency and noise (study 3b) — confirmatory")
+
+    Ms = [5, 10, 20, 50]
+    series = {"fine_tune": [s3r["fine_tune"]["mean"]] + [ms["fine_tune"]["by_M"][str(m)]["score"] for m in Ms[1:]],
+              "change_aware": [s3r["change_aware"]["mean"]] + [ms["change_aware"]["by_M"][str(m)]["score"] for m in Ms[1:]],
+              "in_context": [s3r["in_context"]["mean"]] + [mi[str(m)]["score"] for m in Ms[1:]]}
+    for ag in order:
+        b.plot(Ms, series[ag], "-o", color=AGENT_COLOR[ag], markersize=7, markeredgecolor=SURFACE, markeredgewidth=1.5)
+        b.annotate(AGENT_LABEL[ag], (Ms[-1], series[ag][-1]), xytext=(6, 0), textcoords="offset points",
+                   va="center", fontsize=8.5, color=INK_2)
+    b.axhline(0, color=INK_2, linewidth=1, linestyle=":")
+    b.set_xscale("log")
+    b.set_xticks(Ms, [str(m) for m in Ms])
+    b.minorticks_off()
+    b.set(xlabel="opponent window M (larger = slower opponent)", ylabel="score (Nash = 0)",
+          title="Opponent speed (M-scaling) — exploratory")
+    b.set_xlim(4, 90)
+    fig.suptitle("Study 3: frozen agents vs a reactive opponent (400 seeds per point)",
+                 fontweight="semibold", color=INK, fontsize=11)
+    fig.tight_layout()
+    savefig(fig, "8_study3_robustness_mscale.png")
+
+
 def main() -> None:
     conf = load("results/confirmatory/results.json")
     logs = {a: run_many(a, "switch", ANALYSIS_SWITCH_SEEDS, 200, 600) for a in AGENTS}
@@ -290,6 +337,7 @@ def main() -> None:
     fig_ranking(conf)
     fig_structural_nulls()
     fig_study3()
+    fig_study3_robustness_and_mscale()
 
 
 if __name__ == "__main__":

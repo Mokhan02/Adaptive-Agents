@@ -67,7 +67,10 @@ committed unedited.
    own recent play) orders the agents the same way as their scores. The
    ranking survives one round of latency and 10% observation noise, though
    most of our predictions about *how* each agent would respond were
-   wrong (5 of 12 confirmed). [Details](#study-3-a-reactive-opponent).
+   wrong (5 of 12 confirmed). An exploratory check shows that reading the
+   opponent's history is what pays off against a slower opponent. Why
+   fine-tuning wins against the fast one remains open.
+   [Details](#study-3-a-reactive-opponent).
 
 Every interpretation rule was fixed before its data existed. One verdict
 landed exactly on an ambiguous endpoint of such a rule and is reported as
@@ -306,13 +309,36 @@ that both conditions on recent history *and* changes its mapping during
 play. RL updates every round but has no context input; the in-context
 agent reads context, but its mapping is frozen.
 
-**Not tested:** *why* fine-tuning wins. The result is *consistent with* it
-learning the opponent's reaction rule. The opponent answers the agent's
-last 5 moves, which correlate with the opponent's own recent moves, which
-is what fine-tuning reads. The saved data can't check this. A follow-up
-could test whether the advantage shrinks as the opponent's window grows.
-H1 explains who gets exploited, not fine-tuning's exploitation of the
-opponent.
+**Why does fine-tuning win? An exploratory M-scaling check narrowed this,
+and a third agent changed the answer.** The check varied the opponent's
+window M (5, 10, 20, 50; larger means a slower opponent that holds each best
+response longer), defined before it ran:
+
+| Score (Nash = 0) | M = 5 | M = 10 | M = 20 | M = 50 |
+|---|---|---|---|---|
+| Fine-tuning (reads the opponent's history, updates in play) | +0.232 | +0.403 | +0.401 | +0.520 |
+| In-context (reads history, never updates) | −0.157 | +0.041 | +0.084 | +0.442 |
+| RL (updates, reads no history) | −0.047 | −0.005 | +0.064 | +0.236 |
+
+These are two separate claims, held with different confidence:
+
+1. **What M-scaling shows (exploratory, but a large and consistent
+   effect):** *reading the opponent's recent history* is what pays off
+   against a slower opponent. The in-context agent, which reads but never
+   updates, gains more than RL, which updates but reads nothing, at every
+   window (+0.155, +0.130 and +0.315 more than RL). A slow opponent's next
+   move is predictable from its own recent moves. The "harder to track"
+   explanation, that a longer window is harder for gradient steps to learn,
+   is refuted: no agent's score falls. An intermediate reading, that
+   fine-tuning's extra gain over RL at M = 10–20 showed an advantage from
+   learning during play, did not survive adding the in-context agent, which
+   gains even more without learning at all.
+2. **What it doesn't show (still open):** why fine-tuning beats the
+   in-context agent against the *fast* opponent (M = 5) in study 3's main
+   result. Both read history; only fine-tuning updates. Fine-tuning scores
+   above the in-context agent at every window. So there is no sign that
+   updating and reading trade off, but M-scaling doesn't isolate what
+   updating contributes.
 
 **Bridge condition (exploratory).** The opponent plays study 1's scripted
 Strategy A for 200 rounds, then turns reactive. Every measure is computed
@@ -351,6 +377,12 @@ replaces the observed one, so 6.7% of observations are actually wrong).
   delayed reward with the wrong input. It was fixed to use the input the
   action was chosen from, so lag degrades information, not the
   implementation.
+
+![Study 3b latency and noise (confirmatory) and M-scaling (exploratory)](figures/8_study3_robustness_mscale.png)
+
+*Left: study 3b's pre-registered conditions (confirmatory). Right: the
+M-scaling check (exploratory, defined before it ran). Each panel's title
+states its status.*
 
 | Score (Nash = 0) | Fine-tuning | RL | In-context |
 |---|---|---|---|
@@ -411,6 +443,13 @@ python scripts/exploratory.py structural-null     #   structural-null, dimension
 python scripts/early_detection.py timing-power    # study 2 design (power, diagnose, bias, strengths, run --dry-run)
 python scripts/make_figures.py
 ```
+
+**Long runs on a laptop:** two runs here took 10–12 times their expected
+time because the machine slept or throttled overnight. `caffeinate -i`
+prevents only idle sleep. `caffeinate -s` also blocks system sleep, but only
+on AC power, and a closed lid still sleeps the machine unless it runs with an
+external display. Check `pmset -g` before a long run, and compare the
+progress log's timestamps against the expected pace.
 
 The frozen model, tuning results, calibration and confirmatory results are
 all committed. Results reproduce to within floating-point noise across
